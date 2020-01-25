@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo
+  namespace: hello-world
+  labels:
+    app: echo
+    service: echo
+spec:
+  ports:
+    - port: 3000
+      name: http
+  selector:
+    app: echo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo
+  namespace: hello-world
+  labels:
+    app: echo
+spec:
+  selector:
+    matchLabels:
+      app: echo
+  template:
+    metadata:
+      labels:
+        app: echo
+    spec:
+      containers:
+        - name: echo
+          image: kennship/http-echo
+          ports:
+            - containerPort: 3000

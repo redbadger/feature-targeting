@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: echo
+  namespace: hello-world
+spec:
+  hosts:
+    - echo.localhost
+  gateways:
+    - ingressgateway.istio-system.svc.cluster.local
+  http:
+    - route:
+        - destination:
+            port:
+              number: 3000
+            host: echo
