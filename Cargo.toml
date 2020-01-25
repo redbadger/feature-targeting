@@ -1,4 +1,4 @@
-[workspaces]
+[workspace]
 members = [
   "adapter-istio"
 ]

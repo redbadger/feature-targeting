@@ -6,6 +6,11 @@ metadata:
 spec:
   profile: demo
   values:
+    global:
+      policyCheckFailOpen: true
+    pilot:
+      policy:
+        enabled: true
     gateways:
       istio-ingressgateway:
         type: NodePort

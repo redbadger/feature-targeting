@@ -1,0 +1,13 @@
+apiVersion: config.istio.io/v1alpha2
+kind: rule
+metadata:
+  name: keyval
+  namespace: istio-system
+spec:
+  actions:
+    - handler: keyval.istio-system
+      instances: [keyval]
+      name: x
+  requestHeaderOperations:
+    - name: user-group
+      values: [x.output.value]
