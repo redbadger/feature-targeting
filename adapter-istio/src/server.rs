@@ -1,8 +1,10 @@
 use tonic::{Code, Request, Response, Status};
 
-use adapter_istio::handle_feature_targeting_service_server::HandleFeatureTargetingService;
-pub use adapter_istio::handle_feature_targeting_service_server::HandleFeatureTargetingServiceServer;
-use adapter_istio::{HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg};
+pub use self::adapter_istio::handle_feature_targeting_service_server::HandleFeatureTargetingServiceServer;
+use self::adapter_istio::{
+    handle_feature_targeting_service_server::HandleFeatureTargetingService,
+    HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg,
+};
 use istio::mixer::adapter::model::v1beta1::CheckResult;
 
 pub mod adapter_istio {
@@ -42,7 +44,7 @@ impl HandleFeatureTargetingService for Service {
         if let Some(msg) = request.into_inner().instance {
             let reply = HandleFeatureTargetingResponse {
                 output: Some(OutputMsg {
-                    value: format!("Hello {:?}", msg.path).into(),
+                    value: format!("Hello {:?}", msg.path),
                 }),
                 result: None::<CheckResult>,
             };
