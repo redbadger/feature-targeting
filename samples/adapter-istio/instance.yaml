@@ -8,4 +8,4 @@ spec:
   params:
     method: request.method | "unknown"
     path: api.operation | request.path | "unknown"
-    requested_features: request.headers["features"] | ""
+    features: request.headers["features"] | ""

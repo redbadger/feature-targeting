@@ -9,7 +9,7 @@ option (istio.mixer.adapter.model.v1beta1.template_variety) =
 message Template {
   string method = 1;
   string path = 2;
-  string requested_features = 3;
+  string features = 3;
 }
 
 message OutputTemplate { string value = 1; }
