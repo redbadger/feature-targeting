@@ -6,6 +6,6 @@ metadata:
 spec:
   template: feature-targeting
   params:
-    method: request.method | ""
-    path: api.operation | request.path | ""
-    headers: request.headers
+    method: request.method | "unknown"
+    path: api.operation | request.path | "unknown"
+    headers: request.headers | emptyStringMap()
