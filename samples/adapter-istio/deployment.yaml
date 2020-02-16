@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feature-targeting
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feature-targeting
+  template:
+    metadata:
+      labels:
+        app: feature-targeting
+    spec:
+      containers:
+        - name: feature-targeting
+          image: redbadger/feature-targeting-adapter-istio
+          ports:
+            - containerPort: 50051
+          resources:
+            limits:
+              cpu: 100m
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 100Mi

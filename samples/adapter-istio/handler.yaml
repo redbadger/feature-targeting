@@ -1,0 +1,8 @@
+apiVersion: config.istio.io/v1alpha2
+kind: handler
+metadata:
+  name: feature-targeting
+spec:
+  adapter: feature-targeting
+  connection:
+    address: feature-targeting:50051

@@ -1,0 +1,10 @@
+namespace: istio-system
+
+resources:
+  - feature-targeting-template.yaml
+  - feature-targeting.yaml
+  - feature-targeting-instance.yaml
+  - deployment.yaml
+  - service.yaml
+  - handler.yaml
+  - rule.yaml

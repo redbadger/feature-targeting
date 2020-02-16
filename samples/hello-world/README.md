@@ -17,22 +17,20 @@ kubectl run keyval --image=gcr.io/istio-testing/keyval:release-1.1 --namespace i
 From the istio source folder
 
 ```sh
-$ kubectl apply -f samples/httpbin/policy/keyval-template.yaml
-$ kubectl apply -f samples/httpbin/policy/keyval.yaml
+kubectl apply -f samples/httpbin/policy/keyval-template.yaml
+kubectl apply -f samples/httpbin/policy/keyval.yaml
 ```
 
 ## Deploy the echo service
 
 ```sh
-$ kubectl apply -f namespace.yaml
-$ kubectl apply -f echo.yaml
-$ kubectl apply -f virtualservice.yaml
+kustomize build ../echo-server | kubectl apply -f -
 ```
 
 ## Create the adapter instance
 
 ```sh
-$ kubectl apply -f handler.yaml
-$ kubectl apply -f instance.yaml
-$ kubectl apply -f rule.yaml
+kubectl apply -f handler.yaml
+kubectl apply -f instance.yaml
+kubectl apply -f rule.yaml
 ```

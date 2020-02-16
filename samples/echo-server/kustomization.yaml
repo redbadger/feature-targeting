@@ -1,0 +1,6 @@
+namespace: hello-world
+
+resources:
+  - namespace.yaml
+  - echo.yaml
+  - virtualservice.yaml
