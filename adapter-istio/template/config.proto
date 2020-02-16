@@ -1,0 +1,4 @@
+syntax = "proto3";
+package adapter.featuretargeting.config;
+
+message Params {}

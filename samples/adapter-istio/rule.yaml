@@ -3,6 +3,7 @@ kind: rule
 metadata:
   name: feature-targeting
 spec:
+  match: source.labels["istio"] == "ingressgateway"
   actions:
     - handler: feature-targeting.istio-system
       instances:
