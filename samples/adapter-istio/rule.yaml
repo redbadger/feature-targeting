@@ -10,6 +10,6 @@ spec:
         - feature-targeting
       name: x
   requestHeaderOperations:
-    - name: features
+    - name: X-Features
       values:
-        - x.output.value
+        - x.output.features

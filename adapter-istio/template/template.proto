@@ -12,4 +12,4 @@ message Template {
   string features = 3;
 }
 
-message OutputTemplate { string value = 1; }
+message OutputTemplate { string features = 1; }

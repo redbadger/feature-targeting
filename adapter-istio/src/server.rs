@@ -45,7 +45,7 @@ impl HandleFeatureTargetingService for Service {
         if let Some(msg) = request.into_inner().instance {
             let reply = HandleFeatureTargetingResponse {
                 output: Some(OutputMsg {
-                    value: features::add_features(msg.features, &["new_feature"]),
+                    features: features::add_features(msg.features, &["new_feature"]),
                 }),
                 result: None::<CheckResult>,
             };
