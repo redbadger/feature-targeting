@@ -5,6 +5,7 @@ use self::adapter_istio::{
     handle_feature_targeting_service_server::HandleFeatureTargetingService,
     HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg,
 };
+use crate::features;
 use istio::mixer::adapter::model::v1beta1::CheckResult;
 
 pub mod adapter_istio {
@@ -44,7 +45,7 @@ impl HandleFeatureTargetingService for Service {
         if let Some(msg) = request.into_inner().instance {
             let reply = HandleFeatureTargetingResponse {
                 output: Some(OutputMsg {
-                    value: format!("New features: {:?}", msg.features),
+                    value: features::add_features(msg.features, &["new_feature"]),
                 }),
                 result: None::<CheckResult>,
             };
