@@ -43,7 +43,7 @@ impl HandleFeatureTargetingService for Service {
         println!("{:?}", request);
 
         if let Some(msg) = request.into_inner().instance {
-            let requested_features = match msg.features.get("requested") {
+            let requested_features = match msg.headers.get("x-features") {
                 Some(s) => s.to_string(),
                 None => String::new(),
             };
