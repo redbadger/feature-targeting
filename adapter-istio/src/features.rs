@@ -1,11 +1,7 @@
-pub fn add_features<'a>(existing: String, new: &[&str]) -> String {
-    let mut result = Vec::new();
-    for s in existing.split_whitespace() {
-        result.push(s);
-    }
-    for s in new {
-        result.push(s);
-    }
+pub fn add_features(existing: String, new: &[&str]) -> String {
+    let mut result: Vec<&str> = Vec::new();
+    result.extend(existing.split_whitespace());
+    result.extend_from_slice(new);
     result.sort();
     result.dedup();
     result.join(" ")
