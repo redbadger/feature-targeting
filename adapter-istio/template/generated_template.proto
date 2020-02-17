@@ -87,7 +87,7 @@ message InstanceMsg {
     string path = 2;
     
     
-    string features = 3;
+    map<string, string> features = 3;
     
 }
 
@@ -108,7 +108,7 @@ message InstanceParam {
     string path = 2;
     
     
-    string features = 3;
+    map<string, string> features = 3;
     
 }
 
