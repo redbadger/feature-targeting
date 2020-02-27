@@ -1,3 +1,4 @@
+use regex::Regex;
 use tonic::{Code, Request, Response, Status};
 
 pub use self::adapter_istio::handle_feature_targeting_service_server::HandleFeatureTargetingServiceServer;
@@ -31,8 +32,21 @@ pub mod google {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct Service {}
+#[derive(Debug)]
+pub struct Service {
+    explicit_matching_config: features::ExplicitMatchingConfig,
+}
+
+impl Service {
+    pub fn new(host_matching: Regex, header_name: &str) -> Service {
+        Service {
+            explicit_matching_config: features::ExplicitMatchingConfig {
+                host: host_matching,
+                header: header_name.to_owned(),
+            },
+        }
+    }
+}
 
 #[tonic::async_trait]
 impl HandleFeatureTargetingService for Service {
@@ -43,13 +57,15 @@ impl HandleFeatureTargetingService for Service {
         println!("{:?}", request);
 
         if let Some(msg) = request.into_inner().instance {
-            let requested_features = match msg.headers.get("x-features") {
-                Some(s) => s.to_string(),
-                None => String::new(),
-            };
+            let implicit_features = features::implicit(&msg);
+            let explicit_features = features::explicit(&msg, &self.explicit_matching_config);
+
             let reply = HandleFeatureTargetingResponse {
                 output: Some(OutputMsg {
-                    features: features::add_features(requested_features, &["new_feature"]),
+                    features: features::union(
+                        explicit_features.as_ref(),
+                        implicit_features.as_ref(),
+                    ),
                 }),
                 result: None::<CheckResult>,
             };
