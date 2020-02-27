@@ -5,6 +5,7 @@ metadata:
 spec:
   hosts:
     - echo.localhost
+    - "*.echo.localhost"
   gateways:
     - ingressgateway.istio-system.svc.cluster.local
   http:

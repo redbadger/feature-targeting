@@ -10,3 +10,4 @@ spec:
     path: api.operation | request.path | "unknown"
     headers:
       x-features: request.headers["x-features"] | ""
+      host: request.host
