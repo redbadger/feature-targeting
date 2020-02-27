@@ -35,7 +35,7 @@ pub fn explicit<'a>(msg: &'a InstanceMsg, config: &ExplicitMatchingConfig) -> Ve
     requested_features
 }
 
-pub fn implicit(msg: &InstanceMsg) -> Vec<&str> {
+pub fn implicit(_msg: &InstanceMsg) -> Vec<&str> {
     vec!["new_feature"]
 }
 
