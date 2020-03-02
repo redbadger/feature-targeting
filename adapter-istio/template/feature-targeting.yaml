@@ -1,0 +1,14 @@
+# this config is created through command
+# mixgen adapter --config config.proto_descriptor --session_based=false --name feature-targeting --description Mixer adapter for feature targeting --templates feature-targeting --output ./
+apiVersion: "config.istio.io/v1alpha2"
+kind: adapter
+metadata:
+  name: feature-targeting
+  namespace: istio-system
+spec:
+  description: Mixer adapter for feature targeting
+  session_based: false
+  templates:
+  - feature-targeting
+  config: CpYCChV0ZW1wbGF0ZS9jb25maWcucHJvdG8SH2FkYXB0ZXIuZmVhdHVyZXRhcmdldGluZy5jb25maWciawoGUGFyYW1zEmEKEmV4cGxpY2l0X3RhcmdldGluZxgBIAEoCzIyLmFkYXB0ZXIuZmVhdHVyZXRhcmdldGluZy5jb25maWcuRXhwbGljaXRUYXJnZXRpbmdSEWV4cGxpY2l0VGFyZ2V0aW5nImcKEUV4cGxpY2l0VGFyZ2V0aW5nEikKEGhvc3RuYW1lX3BhdHRlcm4YASABKAlSD2hvc3RuYW1lUGF0dGVybhInCg9vdmVycmlkZV9oZWFkZXIYAiABKAlSDm92ZXJyaWRlSGVhZGVyYgZwcm90bzM=
+---

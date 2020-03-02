@@ -1,4 +1,17 @@
 syntax = "proto3";
 package adapter.featuretargeting.config;
 
-message Params {}
+// Example configuration would look as follows
+//
+// config:
+//   explicit_targeting:
+//     hostname_pattern: "feature-*.pagofx.com"
+//     override_header: "x-features"
+message Params {
+  ExplicitTargeting explicit_targeting = 1;
+}
+
+message ExplicitTargeting {
+  string hostname_pattern = 1;
+  string override_header = 2;
+}
