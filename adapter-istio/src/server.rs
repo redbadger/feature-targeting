@@ -54,6 +54,7 @@ impl HandleFeatureTargetingService for Service {
                     header: tgt.override_header,
                 }
             });
+        println!("{:?}", config);
 
         if let Some(inst) = msg.instance {
             let implicit_features = features::implicit(&inst);
