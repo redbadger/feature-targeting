@@ -1,5 +1,8 @@
-default:
+default: build
 	cargo run
+
+build: template/config.proto_descriptor template/generated_template.proto_descriptor
+	cargo build
 
 docker-build:
 	docker build --tag redbadger/feature-targeting-adapter-istio .
