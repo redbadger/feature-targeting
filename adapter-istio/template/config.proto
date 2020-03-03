@@ -5,7 +5,7 @@ package featuretargeting;
 //
 // config:
 //   explicit_targeting:
-//     hostname_pattern: "feature-*.pagofx.com"
+//     hostname_pattern: "feature-*.example.com"
 //     override_header: "x-features"
 message Params {
   ExplicitTargeting explicit_targeting = 1;
