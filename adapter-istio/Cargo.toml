@@ -9,7 +9,6 @@ tonic = "0.1.1"
 prost = "0.6.1"
 prost-types = "0.6.1"
 tokio = { version = "0.2", features = ["macros"] }
-regex = "1"
 
 [dev-dependencies]
 test-case = "1.0.0"

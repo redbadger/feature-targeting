@@ -1,11 +1,11 @@
 use crate::server::adapter_istio::InstanceMsg;
-use regex::Regex;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ExplicitMatchingConfig {
-    // TODO this can probably be generalised to allow different types of matching
-    // on different inputs, but I can't be bothered to figure that out right now
-    pub host: Regex,
+    // pattern to match hostname against. A string with a single `*` character
+    // in it as a placeholer for the feature name
+    pub host: String,
+    // the header which can be used to explicitly enable features
     pub header: String,
 }
 
@@ -39,13 +39,19 @@ pub fn implicit(_msg: &InstanceMsg) -> Vec<&str> {
     vec!["new_feature"]
 }
 
-fn match_host<'a>(host: &'a str, regex: &Regex) -> Option<&'a str> {
-    println!("{:?}", regex);
+fn match_host<'a, 'b>(host: &'a str, pattern: &'b str) -> Option<&'a str> {
+    let tokens = pattern.split("*").collect::<Vec<&str>>();
 
-    regex
-        .captures(host)
-        .and_then(|it| it.get(1))
-        .map(|it| it.as_str())
+    let (prefix, postfix) = match tokens.as_slice() {
+        [prefix, postfix] => (prefix, postfix),
+        _ => return None,
+    };
+
+    if !host.starts_with(prefix) || !host.ends_with(postfix) {
+        return None;
+    }
+
+    Some(host.trim_start_matches(prefix).trim_end_matches(postfix))
 }
 
 #[cfg(test)]
@@ -57,7 +63,7 @@ mod test {
     lazy_static! {
         static ref CONFIG: ExplicitMatchingConfig = {
             ExplicitMatchingConfig {
-                host: Regex::new("^f-([a-z0-9-]+)\\..+$").unwrap(),
+                host: "f-*.echo.localhost".to_owned(),
                 header: "x-features".to_owned(),
             }
         };
@@ -92,5 +98,16 @@ mod test {
                 .map(|(k, v)| (k.to_owned(), v.to_owned()))
                 .collect(),
         }
+    }
+
+    #[test_case("*", "foo", Some("foo"); "only match")]
+    #[test_case("a-*", "a-foo", Some("foo"); "prefix match")]
+    #[test_case("*-a", "foo-a", Some("foo"); "postfix match")]
+    #[test_case("aa-*-ab", "aa-foo-ab", Some("foo"); "infix match")]
+    #[test_case("aa-*", "foo", None; "prefix not match")]
+    #[test_case("aa-*-*-bb", "foo", None; "multiple wildcards")]
+    #[test_case("aa", "foo", None; "no wildcard")]
+    fn substring_matching(pattern: &str, host: &str, mtch: Option<&str>) {
+        assert_eq!(match_host(host, pattern), mtch)
     }
 }

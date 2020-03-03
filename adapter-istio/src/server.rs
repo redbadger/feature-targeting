@@ -1,10 +1,10 @@
-use regex::Regex;
+use prost::Message;
 use tonic::{Code, Request, Response, Status};
 
 pub use self::adapter_istio::handle_feature_targeting_service_server::HandleFeatureTargetingServiceServer;
 use self::adapter_istio::{
     handle_feature_targeting_service_server::HandleFeatureTargetingService,
-    HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg,
+    HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg, Params,
 };
 use crate::features;
 use istio::mixer::adapter::model::v1beta1::CheckResult;
@@ -32,21 +32,8 @@ pub mod google {
     }
 }
 
-#[derive(Debug)]
-pub struct Service {
-    explicit_matching_config: features::ExplicitMatchingConfig,
-}
-
-impl Service {
-    pub fn new(host_matching: Regex, header_name: &str) -> Service {
-        Service {
-            explicit_matching_config: features::ExplicitMatchingConfig {
-                host: host_matching,
-                header: header_name.to_owned(),
-            },
-        }
-    }
-}
+#[derive(Debug, Default)]
+pub struct Service {}
 
 #[tonic::async_trait]
 impl HandleFeatureTargetingService for Service {
@@ -56,9 +43,21 @@ impl HandleFeatureTargetingService for Service {
     ) -> Result<Response<HandleFeatureTargetingResponse>, Status> {
         println!("{:?}", request);
 
-        if let Some(msg) = request.into_inner().instance {
-            let implicit_features = features::implicit(&msg);
-            let explicit_features = features::explicit(&msg, &self.explicit_matching_config);
+        let msg = request.into_inner();
+        let config = msg
+            .adapter_config
+            .and_then(|cfg| Params::decode(cfg.value.as_ref()).ok())
+            .and_then(|params| params.explicit_targeting)
+            .map_or(features::ExplicitMatchingConfig::default(), |tgt| {
+                features::ExplicitMatchingConfig {
+                    host: tgt.hostname_pattern,
+                    header: tgt.override_header,
+                }
+            });
+
+        if let Some(inst) = msg.instance {
+            let implicit_features = features::implicit(&inst);
+            let explicit_features = features::explicit(&inst, &config);
 
             let reply = HandleFeatureTargetingResponse {
                 output: Some(OutputMsg {

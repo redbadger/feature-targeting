@@ -1,5 +1,3 @@
-use regex::Regex;
-
 use adapter_istio::server;
 use tonic::transport::Server;
 
@@ -15,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .parse()?;
 
-    let svc = server::Service::new(Regex::new("^f-([a-z0-9-]+)\\..+$")?, "x-features");
+    let svc = server::Service::default();
 
     Server::builder()
         .add_service(server::HandleFeatureTargetingServiceServer::new(svc))
