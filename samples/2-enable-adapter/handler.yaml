@@ -6,3 +6,7 @@ spec:
   adapter: feature-targeting
   connection:
     address: feature-targeting:50051
+  params:
+    explicit_targeting:
+      override_header: x-features
+      hostname_pattern: "*.echo.localhost"
