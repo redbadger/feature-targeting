@@ -1,12 +1,21 @@
 use crate::server::adapter_istio::InstanceMsg;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ExplicitMatchingConfig {
     // pattern to match hostname against. A string with a single `*` character
     // in it as a placeholer for the feature name
     pub host: String,
     // the header which can be used to explicitly enable features
     pub header: String,
+}
+
+impl Default for ExplicitMatchingConfig {
+    fn default() -> Self {
+        Self {
+            host: "".to_owned(),
+            header: "x-features".to_owned(),
+        }
+    }
 }
 
 pub fn union(existing: &[&str], new: &[&str]) -> String {
