@@ -1,5 +1,5 @@
 syntax = "proto3";
-package adapter.featuretargeting.config;
+package featuretargeting;
 
 // Example configuration would look as follows
 //
