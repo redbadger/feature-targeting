@@ -4,7 +4,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_client(false)
         .format(true)
         .compile(
-            &["./template/generated_template.proto"],
+            &[
+                "./template/config.proto",
+                "./template/generated_template.proto",
+            ],
             &[
                 "./template",
                 "./template/proto",

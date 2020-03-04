@@ -12,6 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
     )
     .parse()?;
+
     let svc = server::Service::default();
 
     Server::builder()

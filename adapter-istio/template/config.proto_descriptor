@@ -1,4 +1,8 @@
 
-A
-config.protoadapter.featuretargeting.config"
-Paramsbproto3
+ø
+template/config.protofeaturetargeting"\
+ParamsR
+explicit_targeting (2#.featuretargeting.ExplicitTargetingRexplicitTargeting"g
+ExplicitTargeting)
+hostname_pattern (	RhostnamePattern'
+override_header (	RoverrideHeaderbproto3

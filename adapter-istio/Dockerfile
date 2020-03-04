@@ -1,5 +1,5 @@
 # Setup rust build environment
-FROM rust:1.41.0 AS build-context
+FROM rust:1.41.1 AS build-context
 
 RUN rustup component add rustfmt
 
@@ -36,11 +36,12 @@ ENV PORT=50051
 # Build real binaries now, as late as possible
 FROM build-context AS build
 
+COPY Makefile .
 COPY ./src ./src
 COPY ./template ./template
 COPY ./build.rs .
 
-RUN cargo build --release
+RUN make release
 
 # Create the release
 FROM release-context AS release

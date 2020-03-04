@@ -1,5 +1,5 @@
 # this config is created through command
-# mixgen template --descriptor generated_template.proto_descriptor --name feature-targeting --output ../../samples/adapter-istio/feature-targeting-template.yaml
+# mixgen template --descriptor generated_template.proto_descriptor --name feature-targeting --output feature-targeting-template.yaml
 apiVersion: "config.istio.io/v1alpha2"
 kind: template
 metadata:

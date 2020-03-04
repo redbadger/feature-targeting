@@ -1,0 +1,12 @@
+namespace: istio-system
+
+# Lots of Istio language in this example
+# See https://istio.io/blog/2017/adapter-model/ for an introduction
+
+resources:
+  - feature-targeting-server.yaml # Deploy the adapter server
+  - feature-targeting-template.yaml # Register the adapter message template
+  - feature-targeting.yaml # Register the adapter and its configuration
+  - handler.yaml # Start the adapter (crearte a handler)
+  - instance.yaml # Configure a template instance to populate the message
+  - rule.yaml # Attach the instance to ingress gateways and modify requests

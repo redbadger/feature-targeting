@@ -1,9 +1,10 @@
+use prost::Message;
 use tonic::{Code, Request, Response, Status};
 
 pub use self::adapter_istio::handle_feature_targeting_service_server::HandleFeatureTargetingServiceServer;
 use self::adapter_istio::{
     handle_feature_targeting_service_server::HandleFeatureTargetingService,
-    HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg,
+    HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg, Params,
 };
 use crate::features;
 use istio::mixer::adapter::model::v1beta1::CheckResult;
@@ -42,14 +43,29 @@ impl HandleFeatureTargetingService for Service {
     ) -> Result<Response<HandleFeatureTargetingResponse>, Status> {
         println!("{:?}", request);
 
-        if let Some(msg) = request.into_inner().instance {
-            let requested_features = match msg.headers.get("x-features") {
-                Some(s) => s.to_string(),
-                None => String::new(),
-            };
+        let msg = request.into_inner();
+        let config = msg
+            .adapter_config
+            .and_then(|cfg| Params::decode(cfg.value.as_ref()).ok())
+            .and_then(|params| params.explicit_targeting)
+            .map_or(features::ExplicitMatchingConfig::default(), |tgt| {
+                features::ExplicitMatchingConfig {
+                    host: tgt.hostname_pattern,
+                    header: tgt.override_header,
+                }
+            });
+        println!("{:?}", config);
+
+        if let Some(inst) = msg.instance {
+            let implicit_features = features::implicit(&inst);
+            let explicit_features = features::explicit(&inst, &config);
+
             let reply = HandleFeatureTargetingResponse {
                 output: Some(OutputMsg {
-                    features: features::add_features(requested_features, &["new_feature"]),
+                    features: features::union(
+                        explicit_features.as_ref(),
+                        implicit_features.as_ref(),
+                    ),
                 }),
                 result: None::<CheckResult>,
             };
