@@ -28,6 +28,7 @@ spec:
       containers:
         - name: feature-targeting
           image: redbadger/feature-targeting-adapter-istio
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 50051
           resources:
