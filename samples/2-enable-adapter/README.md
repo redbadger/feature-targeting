@@ -14,8 +14,7 @@ to happen, mainly:
 
 ## Before you start
 
-- Create a cluster and install istio (see [readme](../init-cluster/README.md))
-- Deploy echo server (see [readme](../echo-server/README.md))
+- Create a cluster and install istio (see [readme](../1-init-cluster/README.md))
 
 ## Deploy the adapter
 

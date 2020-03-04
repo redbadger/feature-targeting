@@ -18,8 +18,8 @@ header to the incoming request. The lists will be merged.
 
 ### Before you start
 
-1. Initialise a cluster (see `../init-cluster`)
-2. Enable feature targeting (see `../enable-adapter`)
+1. Initialise a cluster (see `../1-init-cluster`)
+2. Enable feature targeting (see `../2-enable-adapter`)
 
 ### Deploy the echo service
 
