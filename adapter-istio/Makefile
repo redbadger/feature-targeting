@@ -4,6 +4,9 @@ default: build
 build: template/config.proto_descriptor template/generated_template.proto_descriptor
 	cargo build
 
+release: template/config.proto_descriptor template/generated_template.proto_descriptor
+	cargo build --release
+
 docker-build:
 	docker build --tag redbadger/feature-targeting-adapter-istio .
 
@@ -69,4 +72,4 @@ template/config.proto_descriptor: template/config.proto
 template/proto/proto.lock:
 	cd template && ./get-proto.sh
 
-.PHONY: default docker-build docker-run proto-install proto-clean
+.PHONY: default build release docker-build docker-run protobuf-install protobuf-clean
