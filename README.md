@@ -12,11 +12,11 @@ See the [samples](./samples/README.md) directory to try some examples.
 
 ## About feature targeting
 
-Feature targeting is an evolution (or a clarification) of the capability commonly
-refered to as [feature toggles](https://www.martinfowler.com/articles/feature-toggles.html).
+Feature targeting is an evolution (or clarification) of the capability commonly
+referred to as [feature toggles](https://www.martinfowler.com/articles/feature-toggles.html).
 
-The terms "feature toggle" is a little misleading. Partly in metioning "features",
-leading to an assumption this capability is only useful for customer facing
+The term "feature toggle" is a little misleading. Partly in mentioning "features",
+leading to an assumption that this capability is only useful for customer facing
 product changes, but mostly due to the assumption that features can be on or
 off for everyone and there is nothing in between.
 
@@ -32,7 +32,7 @@ risk-reducing strategies for testing, deployment and release of software, e.g.
 ephemeral and long-term environments, blue-green and canary deployments, etc.
 
 The goal of feature targeting is to **fully separate deployments from releases**
-and reduce complexity of IT infrastructure an automation, which is in place solely to
+and reduce complexity of IT infrastructure and automation, which is in place solely to
 make sure customers don't see behaviours which are not ready for the public and
 to reduce risk of issues caused by deployment.
 
@@ -83,7 +83,7 @@ The engineer can then make changes, deploy them to a shared environment (even th
 and use explicit targeting to enable the feature for themselves, but nobody else. 
 This can be repeated as many times as necessary. An interesting side-effect is that 
 the incremental code changes made are immediately available to the wider team 
-(known as "mainline development") reducing queuing of dependent changes.
+(known as "mainline", or "trunk-based" development) reducing queuing of dependent changes.
 
 Once the feature has been mostly completed, a QA person can use explicit targeting
 to do deeper exploratory testing and outside-in regression tests can be written
@@ -91,20 +91,20 @@ exercising the feature, also using explicit targeting.
 
 Finally, when the trust in the feature has grown to a point of being ready for
 release, implicit targeting can be used to enable the feature for the whole team,
-all of staff, beta users, a percentage of the public or all of the public.
+all of the staff, beta users, a percentage of the public or all of the public.
 
 Once the feature is available for the full audience, the conditionals protecting
-it can be removed, which concludes the lifecycle.
+it can be removed, which concludes the life cycle.
 
 Notice that this could be done without excessive codebase branching and a large
-number of replias of the live environment, but with the same level of safety.
+number of replicas of the live environment, but with the same level of safety.
 This is the goal of this capability. 
 
 When this method is followed for all changes, deployments can be made automatically
 for every change made, because by default, they have no user-facing effect. This
 means changes are deployed more frequently and therefore are smaller in scope,
 less risky and should they have negative impact, it is easier to diagnose and fix.
-Feature targeting is a big enabler for continunous deployment to production.
+Feature targeting is a big enabler for continuous deployment to production.
 
 ### General architecture
 
@@ -121,7 +121,7 @@ for this particular request. This is then returned to the proxy and injected
 into the request before it is forwarded to the first service in the tree.
 
 The services in the request path need to forward the enabled feature set to
-their upstream services, so that the feautre set is consistent throughout.
+their upstream services, so that the feature set is consistent throughout.
 
 This architecture strongly resembles the architecture of API gateway based
 systems and service meshes, so where possible, it is better from a complexity
