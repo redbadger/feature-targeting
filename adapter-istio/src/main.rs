@@ -1,5 +1,6 @@
-use adapter_istio::server;
 use tonic::transport::Server;
+
+mod server;
 
 const PORT: u16 = 50051;
 #[tokio::main]

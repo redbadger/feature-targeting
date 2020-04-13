@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use prost::Message;
 use tonic::{Code, Request, Response, Status};
 
@@ -6,7 +8,7 @@ use self::adapter_istio::{
     handle_feature_targeting_service_server::HandleFeatureTargetingService,
     HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg, Params,
 };
-use crate::features;
+use data_plane::features;
 use istio::mixer::adapter::model::v1beta1::CheckResult;
 
 pub mod adapter_istio {
@@ -57,8 +59,16 @@ impl HandleFeatureTargetingService for Service {
         println!("{:?}", config);
 
         if let Some(inst) = msg.instance {
-            let implicit_features = features::implicit(&inst);
-            let explicit_features = features::explicit(&inst, &config);
+            let mut request: HashMap<&str, &str> = inst
+                .headers
+                .iter()
+                .map(|(k, v)| (k.as_ref(), v.as_ref()))
+                .collect();
+            request.insert("method", inst.method.as_ref());
+            request.insert("path", inst.path.as_ref());
+
+            let implicit_features = features::implicit(&request);
+            let explicit_features = features::explicit(&request, &config);
 
             let reply = HandleFeatureTargetingResponse {
                 output: Some(OutputMsg {

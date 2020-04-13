@@ -9,10 +9,7 @@ tonic = "0.1.1"
 prost = "0.6.1"
 prost-types = "0.6.1"
 tokio = { version = "0.2", features = ["macros"] }
-
-[dev-dependencies]
-test-case = "1.0.0"
-lazy_static = "1.4.0"
+data-plane = { path = "../data-plane" }
 
 [build-dependencies]
 tonic-build = "0.1.1"

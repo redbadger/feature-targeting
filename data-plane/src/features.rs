@@ -1,4 +1,4 @@
-use crate::server::adapter_istio::InstanceMsg;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct ExplicitMatchingConfig {
@@ -27,24 +27,20 @@ pub fn union(existing: &[&str], new: &[&str]) -> String {
     result.join(" ")
 }
 
-pub fn explicit<'a>(msg: &'a InstanceMsg, config: &ExplicitMatchingConfig) -> Vec<&'a str> {
-    let mut requested_features = match msg.headers.get(&config.header) {
+pub fn explicit<'a>(msg: &HashMap<&str, &'a str>, config: &ExplicitMatchingConfig) -> Vec<&'a str> {
+    let mut requested_features = match msg.get(&config.header.as_ref()) {
         Some(s) => s.split_whitespace().collect(),
         None => Vec::new(),
     };
 
-    if let Some(s) = msg
-        .headers
-        .get("host")
-        .and_then(|it| match_host(it, &config.host))
-    {
+    if let Some(s) = msg.get("host").and_then(|it| match_host(it, &config.host)) {
         requested_features.push(s);
     };
 
     requested_features
 }
 
-pub fn implicit(_msg: &InstanceMsg) -> Vec<&str> {
+pub fn implicit<'a>(_msg: &HashMap<&str, &'a str>) -> Vec<&'a str> {
     vec!["new_feature"]
 }
 
@@ -67,6 +63,7 @@ fn match_host<'a, 'b>(host: &'a str, pattern: &'b str) -> Option<&'a str> {
 mod test {
     use super::*;
     use lazy_static::lazy_static;
+    use std::collections::HashMap;
     use test_case::test_case;
 
     lazy_static! {
@@ -93,20 +90,25 @@ mod test {
     #[test_case(msg(vec![("x-features", "one two"), ("host", "echo.localhost")]), &*CONFIG, vec!["one", "two"]; "multiple")]
     #[test_case(msg(vec![("x-features", ""), ("host", "f-one.echo.localhost")]), &*CONFIG, vec!["one"]; "host")]
     #[test_case(msg(vec![("x-features", "one"), ("host", "f-two.echo.localhost")]), &*CONFIG, vec!["one", "two"]; "combo")]
-    fn explicit_targeting(msg: InstanceMsg, config: &ExplicitMatchingConfig, features: Vec<&str>) {
+    fn explicit_targeting(
+        msg: HashMap<&str, &str>,
+        config: &ExplicitMatchingConfig,
+        features: Vec<&str>,
+    ) {
         assert_eq!(explicit(&msg, config), features);
     }
 
-    fn msg(headers: Vec<(&str, &str)>) -> InstanceMsg {
-        InstanceMsg {
-            name: "xyz".to_owned(),
-            method: "GET".to_owned(),
-            path: "/".to_owned(),
-            headers: headers
-                .into_iter()
-                .map(|(k, v)| (k.to_owned(), v.to_owned()))
-                .collect(),
+    fn msg<'a, 'b>(headers: Vec<(&'a str, &'b str)>) -> HashMap<&'a str, &'b str> {
+        let mut map = HashMap::with_capacity(3 + headers.len());
+
+        map.insert("method", "GET");
+        map.insert("path", "/");
+
+        for (name, value) in headers {
+            map.insert(name, value);
         }
+
+        map
     }
 
     #[test_case("*", "foo", Some("foo"); "only match")]
