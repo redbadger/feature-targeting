@@ -50,11 +50,16 @@ impl HandleFeatureTargetingService for Service {
             .adapter_config
             .and_then(|cfg| Params::decode(cfg.value.as_ref()).ok())
             .and_then(|params| params.explicit_targeting)
-            .map_or(features::ExplicitMatchingConfig::default(), |tgt| {
-                features::ExplicitMatchingConfig {
-                    host: tgt.hostname_pattern,
-                    header: tgt.override_header,
-                }
+            .map_or(features::explicit::Config::default(), |tgt| {
+                features::explicit::Config(vec![
+                    Box::new(features::explicit::List {
+                        attribute: tgt.override_header,
+                    }),
+                    Box::new(features::explicit::Pattern {
+                        attribute: "host".to_owned(),
+                        pattern: tgt.hostname_pattern,
+                    }),
+                ])
             });
         println!("{:?}", config);
 
@@ -67,16 +72,10 @@ impl HandleFeatureTargetingService for Service {
             request.insert("method", inst.method.as_ref());
             request.insert("path", inst.path.as_ref());
 
-            let implicit_features = features::implicit(&request);
-            let explicit_features = features::explicit(&request, &config);
+            let ftrs = features::target(&request, &config);
 
             let reply = HandleFeatureTargetingResponse {
-                output: Some(OutputMsg {
-                    features: features::union(
-                        explicit_features.as_ref(),
-                        implicit_features.as_ref(),
-                    ),
-                }),
+                output: Some(OutputMsg { features: ftrs }),
                 result: None::<CheckResult>,
             };
             Ok(Response::new(reply))

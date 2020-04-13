@@ -12,10 +12,15 @@ pub fn _start() {
             Box::new(FeatureTargeting {
                 context_id,
                 // TODO use on_configure to allow operator to specify this
-                explicit_matching_config: features::ExplicitMatchingConfig {
-                    header: "x-feature-override".to_owned(),
-                    host: "f-*.localhost".to_owned(),
-                },
+                explicit_matching_config: features::explicit::Config(vec![
+                    Box::new(features::explicit::List {
+                        attribute: "x-feature-override".to_owned(),
+                    }),
+                    Box::new(features::explicit::Pattern {
+                        attribute: ":authority".to_owned(),
+                        pattern: "f-*.localhost:8080".to_owned(),
+                    }),
+                ]),
             })
         },
     )
@@ -23,7 +28,7 @@ pub fn _start() {
 
 struct FeatureTargeting {
     context_id: u32,
-    explicit_matching_config: features::ExplicitMatchingConfig,
+    explicit_matching_config: features::explicit::Config,
 }
 
 impl wasm::traits::Context for FeatureTargeting {}
@@ -39,23 +44,11 @@ impl wasm::traits::HttpContext for FeatureTargeting {
 
         for (name, value) in &headers {
             request.insert(name.as_ref(), value.as_ref());
-
-            // TODO improve explicit matching config to allow list and pattern
-            // matches on any request attributes
-            if name == ":authority" {
-                // in Envoy, :authority is requested "host:port"
-                if let Some(host) = value.split(':').next() {
-                    request.insert("host", host);
-                }
-            }
         }
 
         info!("Targeting on request: {:?}", request);
 
-        let exp_features = features::explicit(&request, &self.explicit_matching_config);
-        let imp_features = features::implicit(&request);
-
-        let output = features::union(exp_features.as_ref(), imp_features.as_ref());
+        let output = features::target(&request, &self.explicit_matching_config);
 
         // TODO Expose as configuration
         self.set_http_request_header("x-features", Some(output.as_ref()));
