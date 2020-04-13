@@ -27,20 +27,26 @@ pub fn union(existing: &[&str], new: &[&str]) -> String {
     result.join(" ")
 }
 
-pub fn explicit<'a>(msg: &HashMap<&str, &'a str>, config: &ExplicitMatchingConfig) -> Vec<&'a str> {
-    let mut requested_features = match msg.get(&config.header.as_ref()) {
+pub fn explicit<'a>(
+    request: &HashMap<&str, &'a str>,
+    config: &ExplicitMatchingConfig,
+) -> Vec<&'a str> {
+    let mut requested_features = match request.get(&config.header.as_ref()) {
         Some(s) => s.split_whitespace().collect(),
         None => Vec::new(),
     };
 
-    if let Some(s) = msg.get("host").and_then(|it| match_host(it, &config.host)) {
+    if let Some(s) = request
+        .get("host")
+        .and_then(|it| match_host(it, &config.host))
+    {
         requested_features.push(s);
     };
 
     requested_features
 }
 
-pub fn implicit<'a>(_msg: &HashMap<&str, &'a str>) -> Vec<&'a str> {
+pub fn implicit<'a>(_request: &HashMap<&str, &'a str>) -> Vec<&'a str> {
     vec!["new_feature"]
 }
 

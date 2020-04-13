@@ -13,3 +13,4 @@ crate-type = ["cdylib"]
 [dependencies]
 log = "0.4.8"
 proxy-wasm = "0.1.0"
+data-plane = { path = "../data-plane" }

@@ -16,6 +16,10 @@ version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "data-plane"
+version = "0.1.0"
+
+[[package]]
 name = "hashbrown"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -46,6 +50,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "proxy-wasm"
 version = "0.1.0"
 dependencies = [
+ "data-plane 0.1.0",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "proxy-wasm 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
