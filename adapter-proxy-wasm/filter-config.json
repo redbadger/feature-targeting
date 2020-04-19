@@ -1,0 +1,14 @@
+{
+  "header_name": "x-features",
+  "explicit": [
+    {
+      "_extract": "list",
+      "attribute": "x-feature-override"
+    },
+    {
+      "_extract": "pattern",
+      "attribute": ":authority",
+      "pattern": "f-*.localhost:8080"
+    }
+  ]
+}

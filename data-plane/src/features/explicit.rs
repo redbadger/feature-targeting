@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::fmt;
+
+use serde::Deserialize;
 
 pub fn from_request<'a>(request: &HashMap<&str, &'a str>, config: &Config) -> Vec<&'a str> {
     let mut features = config
@@ -14,29 +15,42 @@ pub fn from_request<'a>(request: &HashMap<&str, &'a str>, config: &Config) -> Ve
 }
 
 // Configuration
-#[derive(Debug)]
-pub struct Config(pub Vec<Box<dyn Extract + Sync>>);
+#[derive(Debug, Deserialize)]
+pub struct Config(pub Vec<Extract>);
 
 impl Default for Config {
     fn default() -> Self {
-        Self(vec![Box::new(List {
+        Self(vec![Extract::List(List {
             attribute: "x-features".to_owned(),
         })])
     }
 }
+
 // Ways of extracting feature names from a request
 
-pub trait Extract: fmt::Debug {
-    fn extract<'a>(&self, request: &HashMap<&str, &'a str>) -> Vec<&'a str>;
+#[derive(Debug, Deserialize)]
+#[serde(tag = "_extract", rename_all = "snake_case")]
+pub enum Extract {
+    List(List),
+    Pattern(Pattern),
+}
+
+impl Extract {
+    fn extract<'a>(&self, request: &HashMap<&str, &'a str>) -> Vec<&'a str> {
+        match self {
+            Extract::List(l) => l.extract(request),
+            Extract::Pattern(p) => p.extract(request),
+        }
+    }
 }
 
 // List of features in an attribute
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct List {
     pub attribute: String,
 }
 
-impl Extract for List {
+impl List {
     fn extract<'a>(&self, request: &HashMap<&str, &'a str>) -> Vec<&'a str> {
         if let Some(value) = request.get::<str>(self.attribute.as_ref()) {
             return value.split_whitespace().collect();
@@ -48,13 +62,13 @@ impl Extract for List {
 
 // Pattern matching on an attribute
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct Pattern {
     pub attribute: String,
     pub pattern: String,
 }
 
-impl Extract for Pattern {
+impl Pattern {
     fn extract<'a>(&self, request: &HashMap<&str, &'a str>) -> Vec<&'a str> {
         if let Some(value) = request.get::<str>(self.attribute.as_ref()) {
             return match_pattern(value, self.pattern.as_ref()).map_or(vec![], |v| vec![v]);
@@ -89,11 +103,11 @@ mod test {
     lazy_static! {
         static ref CONFIG: Config = {
             Config(vec![
-                Box::new(Pattern {
+                Extract::Pattern(Pattern {
                     attribute: "host".to_owned(),
                     pattern: "f-*.echo.localhost".to_owned(),
                 }),
-                Box::new(List {
+                Extract::List(List {
                     attribute: "x-features".to_owned(),
                 }),
             ])

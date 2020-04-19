@@ -5,7 +5,10 @@ build-image: release ./feature_targeting.wasm
 
 # Running with istio/proxyv2:1.5.x is key
 run-local:
-	wasme deploy envoy feature-targeting:0.1.0 --envoy-image=istio/proxyv2:1.5.1 --bootstrap=envoy-bootstrap.yml
+	wasme deploy envoy feature-targeting:0.1.0 \
+		--envoy-image=istio/proxyv2:1.5.1 \
+		--bootstrap=envoy-bootstrap.yml \
+		--config='$(shell cat filter-config.json)'
 
 release:
 	cargo build --target wasm32-unknown-unknown --release
