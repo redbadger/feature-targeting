@@ -21,7 +21,7 @@ pub struct Config(pub Vec<Extract>);
 impl Default for Config {
     fn default() -> Self {
         Self(vec![Extract::List(List {
-            attribute: "x-features".to_owned(),
+            attribute: "x-feature-overrides".to_owned(),
         })])
     }
 }
