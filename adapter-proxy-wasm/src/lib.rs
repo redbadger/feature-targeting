@@ -1,10 +1,8 @@
 use log::{info, warn};
-use std::cell::RefCell;
-use std::collections::HashMap;
-
 use proxy_wasm as wasm;
 use serde::Deserialize;
-use serde_json;
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 use data_plane::features;
 use features::explicit::Config as ExplicitConfig;
@@ -110,5 +108,24 @@ impl wasm::traits::HttpContext for HttpHandler {
                 wasm::types::Action::Continue
             }
         })
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+    use proxy_wasm::traits::HttpContext;
+
+    // this test currently doesn't work (needs a runner)
+    #[ignore]
+    #[test]
+    fn test_req() {
+        let config: FilterConfig =
+            serde_json::from_slice(include_bytes!("../filter-config.json")).unwrap();
+        CONFIGS.with(|configs| {
+            configs.borrow_mut().insert(1, config);
+        });
+        let result = HttpHandler { root_context_id: 1 }.on_http_request_headers(1);
+        assert_eq!(format!("{:?}", result), "Continue");
     }
 }
