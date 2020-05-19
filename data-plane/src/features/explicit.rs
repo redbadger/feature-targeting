@@ -79,7 +79,7 @@ impl Pattern {
 }
 
 fn match_pattern<'a, 'b>(value: &'a str, pattern: &'b str) -> Option<&'a str> {
-    let tokens = pattern.split("*").collect::<Vec<&str>>();
+    let tokens = pattern.split('*').collect::<Vec<&str>>();
 
     let (prefix, postfix) = match tokens.as_slice() {
         [prefix, postfix] => (prefix, postfix),
