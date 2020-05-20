@@ -19,19 +19,33 @@ spec:
       patch:
         operation: INSERT_BEFORE
         value:
+          name: envoy.filters.http.wasm
           config:
             config:
               name: feature_targeting
-              rootId: echo-service-filter
-              configuration: '{ "header_name": "x-features", "explicit": [ { "_extract": "list", "attribute": "x-feature-override" }, { "_extract": "pattern", "attribute": ":authority", "pattern": "f-*.localhost:8080" } ] }'
+              rootId: feature_targeting
+              configuration: |
+                {
+                  "header_name": "x-features",
+                  "explicit": [
+                    {
+                      "_extract": "list",
+                      "attribute": "x-feature-override"
+                    },
+                    {
+                      "_extract": "pattern",
+                      "attribute": ":authority",
+                      "pattern": "f-*.localhost:8080"
+                    }
+                  ]
+                }
               vmConfig:
+                vmId: feature_targeting
+                runtime: envoy.wasm.runtime.v8
                 code:
                   local:
                     filename: /var/local/lib/envoy-filters/feature_targeting.wasm
-                runtime: envoy.wasm.runtime.v8
-                vmId: feature_targeting
                 allow_precompiled: true
-          name: envoy.filters.http.wasm
   workloadSelector:
     labels:
       app: echo
