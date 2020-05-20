@@ -18,8 +18,7 @@ header to the incoming request. The lists will be merged.
 
 ### Before you start
 
-1. Initialise a cluster (see `../1-init-cluster`)
-2. Enable feature targeting (see `../2-enable-adapter`)
+Install Istio and the relevant adapter (see this [readme](../README.md))
 
 ### Deploy the echo service
 
