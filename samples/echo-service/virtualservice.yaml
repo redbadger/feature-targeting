@@ -7,7 +7,7 @@ spec:
     - echo.localhost
     - "*.echo.localhost"
   gateways:
-    - istio-system/ingressgateway
+    - istio-system/istio-ingressgateway
   http:
     - route:
         - destination:

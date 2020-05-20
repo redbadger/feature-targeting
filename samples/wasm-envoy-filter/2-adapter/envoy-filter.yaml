@@ -1,0 +1,37 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: echo-service-filter
+spec:
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        proxy:
+          proxyVersion: '^1\.5.*'
+        listener:
+          portNumber: 3000
+          filterChain:
+            filter:
+              name: envoy.http_connection_manager
+              subFilter:
+                name: envoy.router
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          config:
+            config:
+              name: feature_targeting
+              rootId: echo-service-filter
+              configuration: '{ "header_name": "x-features", "explicit": [ { "_extract": "list", "attribute": "x-feature-override" }, { "_extract": "pattern", "attribute": ":authority", "pattern": "f-*.localhost:8080" } ] }'
+              vmConfig:
+                code:
+                  local:
+                    filename: /var/local/lib/envoy-filters/feature_targeting.wasm
+                runtime: envoy.wasm.runtime.v8
+                vmId: feature_targeting
+                allow_precompiled: true
+          name: envoy.filters.http.wasm
+  workloadSelector:
+    labels:
+      app: echo

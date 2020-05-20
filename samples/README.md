@@ -19,5 +19,5 @@ This example uses an out-of-process Istio Mixer Adapter
 
 ## Samples
 
-- [Hello World](./hello-world/README.md) - A simple hello world that shows
-  feature state injection happening with an Echo server.
+- [echo service](./echo-service/README.md) - A simple echo service that shows
+  feature targeting header injection.

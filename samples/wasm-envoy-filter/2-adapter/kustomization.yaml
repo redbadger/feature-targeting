@@ -1,0 +1,4 @@
+namespace: echo-service
+
+resources:
+  - envoy-filter.yaml
