@@ -13,6 +13,7 @@ spec:
       annotations:
         sidecar.istio.io/userVolume: '[{"name": "filter", "persistentVolumeClaim": {"claimName": "envoy-filters"}}]'
         sidecar.istio.io/userVolumeMount: '[{"name": "filter", "mountPath": "var/local/lib/envoy-filters", "readonly": true}]'
+        sidecar.istio.io/logLevel: "debug"
       labels:
         app: echo
     spec:

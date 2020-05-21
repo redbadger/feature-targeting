@@ -4,8 +4,7 @@ metadata:
   name: echo
 spec:
   hosts:
-    - echo.localhost
-    - "*.echo.localhost"
+    - "*.localhost"
   gateways:
     - istio-system/istio-ingressgateway
   http:

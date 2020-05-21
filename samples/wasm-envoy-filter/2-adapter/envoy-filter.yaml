@@ -3,12 +3,13 @@ kind: EnvoyFilter
 metadata:
   name: echo-service-filter
 spec:
+  workloadSelector:
+    labels:
+      app: echo
   configPatches:
     - applyTo: HTTP_FILTER
       match:
         context: SIDECAR_INBOUND
-        proxy:
-          proxyVersion: '^1\.5.*'
         listener:
           portNumber: 3000
           filterChain:
@@ -20,32 +21,31 @@ spec:
         operation: INSERT_BEFORE
         value:
           name: envoy.filters.http.wasm
-          config:
-            config:
-              name: feature_targeting
-              rootId: feature_targeting
-              configuration: |
-                {
-                  "header_name": "x-features",
-                  "explicit": [
-                    {
-                      "_extract": "list",
-                      "attribute": "x-feature-override"
-                    },
-                    {
-                      "_extract": "pattern",
-                      "attribute": ":authority",
-                      "pattern": "f-*.localhost:8080"
-                    }
-                  ]
-                }
-              vmConfig:
-                vmId: feature_targeting
-                runtime: envoy.wasm.runtime.v8
-                code:
-                  local:
-                    filename: /var/local/lib/envoy-filters/feature_targeting.wasm
-                allow_precompiled: true
-  workloadSelector:
-    labels:
-      app: echo
+          typedConfig:
+            "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+            typeUrl: type.googleapis.com/envoy.config.filter.http.wasm.v2.Wasm
+            value:
+              config:
+                configuration: |
+                  {
+                    "header_name": "x-features",
+                    "explicit": [
+                      {
+                        "_extract": "list",
+                        "attribute": "x-feature-override"
+                      },
+                      {
+                        "_extract": "pattern",
+                        "attribute": ":authority",
+                        "pattern": "f-*.localhost"
+                      }
+                    ]
+                  }
+                root_id: feature_targeting
+                vm_config:
+                  code:
+                    local:
+                      filename: /var/local/lib/envoy-filters/feature_targeting.wasm
+                  runtime: envoy.wasm.runtime.v8
+                  vm_id: feature_targeting
+                  allow_precompiled: true
