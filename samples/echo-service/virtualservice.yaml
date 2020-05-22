@@ -6,7 +6,7 @@ spec:
   hosts:
     - "*.localhost"
   gateways:
-    - istio-system/istio-ingressgateway
+    - istio-system/ingressgateway
   http:
     - route:
         - destination:

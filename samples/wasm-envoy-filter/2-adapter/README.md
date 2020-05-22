@@ -1,6 +1,6 @@
-# Feature Targeting for Istio 1.5+, using envoy filter (WASM).
+# Feature Targeting for Istio 1.6+, using envoy filter (WASM).
 
-1.  install Istio 1.5 to a cluster (see [readme](../1-istio/README.md))
+1.  install Istio 1.6 to a cluster (see [readme](../1-istio/README.md))
 1.  install the `echo-service` pod (see [readme](../../echo-service/README.md))
 1.  test that you get a response (without feature header injection):
 

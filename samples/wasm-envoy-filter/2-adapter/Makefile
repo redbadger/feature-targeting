@@ -7,7 +7,7 @@ install: ## Install feature_targeting filter
 
 .PHONY: delete
 delete: ## Remove feature_targeting filter
-	kustomize build . | kubectl apply --ignore-not-found -f - || true
+	kustomize build . | kubectl delete -f - --ignore-not-found || true
 
 .PHONY: help
 help: ## Display this help screen

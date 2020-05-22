@@ -1,11 +1,14 @@
 use log::{info, warn};
-use proxy_wasm as wasm;
+use proxy_wasm::{
+    traits::*,
+    types::{self, LogLevel},
+};
 use serde::Deserialize;
-use std::cell::RefCell;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
 use data_plane::features;
 use features::explicit::Config as ExplicitConfig;
+use types::Action;
 
 #[derive(Deserialize, Debug)]
 struct FilterConfig {
@@ -28,8 +31,8 @@ thread_local! {
 
 #[no_mangle]
 pub fn _start() {
-    proxy_wasm::set_log_level(wasm::types::LogLevel::Trace);
-    proxy_wasm::set_root_context(|context_id| -> Box<dyn wasm::traits::RootContext> {
+    proxy_wasm::set_log_level(LogLevel::Trace);
+    proxy_wasm::set_root_context(|context_id| -> Box<dyn RootContext> {
         CONFIGS.with(|configs| {
             configs
                 .borrow_mut()
@@ -38,20 +41,18 @@ pub fn _start() {
 
         Box::new(RootHandler { context_id })
     });
-    proxy_wasm::set_http_context(
-        |_context_id, root_context_id| -> Box<dyn wasm::traits::HttpContext> {
-            Box::new(HttpHandler { root_context_id })
-        },
-    )
+    proxy_wasm::set_http_context(|_context_id, root_context_id| -> Box<dyn HttpContext> {
+        Box::new(HttpHandler { root_context_id })
+    })
 }
 
 struct RootHandler {
     context_id: u32,
 }
 
-impl wasm::traits::Context for RootHandler {}
+impl Context for RootHandler {}
 
-impl wasm::traits::RootContext for RootHandler {
+impl RootContext for RootHandler {
     fn on_configure(&mut self, _config_size: usize) -> bool {
         let configuration: Vec<u8> = match self.get_configuration() {
             Some(c) => c,
@@ -78,10 +79,10 @@ struct HttpHandler {
     root_context_id: u32,
 }
 
-impl wasm::traits::Context for HttpHandler {}
+impl Context for HttpHandler {}
 
-impl wasm::traits::HttpContext for HttpHandler {
-    fn on_http_request_headers(&mut self, _num_headers: usize) -> wasm::types::Action {
+impl HttpContext for HttpHandler {
+    fn on_http_request_headers(&mut self, _num_headers: usize) -> Action {
         CONFIGS.with(|configs| {
             if let Some(config) = configs.borrow().get(&self.root_context_id) {
                 let mut request: HashMap<&str, &str> = HashMap::new();
@@ -98,34 +99,15 @@ impl wasm::traits::HttpContext for HttpHandler {
                 let output = features::target(&request, &config.explicit);
                 self.set_http_request_header(config.header_name.as_ref(), Some(output.as_ref()));
 
-                wasm::types::Action::Continue
+                Action::Continue
             } else {
                 warn!(
                     "Configuration does not exist for root context #{}, this should not happen!",
                     self.root_context_id
                 );
 
-                wasm::types::Action::Continue
+                Action::Continue
             }
         })
-    }
-}
-
-#[cfg(test)]
-pub mod test {
-    use super::*;
-    use proxy_wasm::traits::HttpContext;
-
-    // this test currently doesn't work (needs a runner)
-    #[ignore]
-    #[test]
-    fn test_req() {
-        let config: FilterConfig =
-            serde_json::from_slice(include_bytes!("../filter-config.json")).unwrap();
-        CONFIGS.with(|configs| {
-            configs.borrow_mut().insert(1, config);
-        });
-        let result = HttpHandler { root_context_id: 1 }.on_http_request_headers(1);
-        assert_eq!(format!("{:?}", result), "Continue");
     }
 }

@@ -5,6 +5,8 @@ metadata:
 spec:
   profile: default
   components:
+    telemetry:
+      enabled: false
     egressGateways:
       - name: istio-egressgateway
         enabled: false

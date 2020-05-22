@@ -7,7 +7,7 @@ install: ## Install echo-service
 
 .PHONY: delete
 delete: ## Remove echo-service
-	kustomize build . | kubectl apply --ignore-not-found -f - || true
+	kustomize build . | kubectl delete -f - --ignore-not-found || true
 
 .PHONY: help
 help: ## Display this help screen

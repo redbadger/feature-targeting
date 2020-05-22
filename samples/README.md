@@ -3,7 +3,7 @@
 This set of samples should demonstrate the capabilities feature targeting
 can provide.
 
-## Getting started with Istio 1.5, and above
+## Getting started with Istio 1.6, and above
 
 This example uses a WASM Envoy filter
 

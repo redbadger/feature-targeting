@@ -1,5 +1,5 @@
 .PHONY: default
-default: operator profile ## Install Istio
+default: operator profile config ## Install Istio
 
 .PHONY: operator
 operator: ## Install Istio Operator
@@ -12,18 +12,23 @@ operator: ## Install Istio Operator
 
 .PHONY: profile
 profile: ## Install Istio profile
-	kustomize build . | kubectl apply -f -
+	kustomize build 1-profile | kubectl apply -f -
 	@until kubectl wait --for=condition=ready pod -l app=istiod -n istio-system --timeout=480s; \
 	do \
 		echo "Waiting for istiod"; \
 		sleep 10 ;\
 	done
 
+.PHONY: config
+config: ## Install Istio config
+	kustomize build 2-config | kubectl apply -f -
+
 .PHONY: delete
 delete: ## Remove Istio
 	kubectl delete istiooperators.install.istio.io -n istio-system istiocontrolplane --ignore-not-found || true
 	istioctl operator remove || true
-	kustomize build . | kubectl delete -f - --ignore-not-found || true
+	kustomize build 2-config | kubectl delete -f - --ignore-not-found || true
+	kustomize build 1-profile | kubectl delete -f - --ignore-not-found || true
 
 .PHONY: help
 help: ## Display this help screen

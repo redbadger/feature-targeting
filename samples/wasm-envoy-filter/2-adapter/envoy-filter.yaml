@@ -11,7 +11,6 @@ spec:
       match:
         context: SIDECAR_INBOUND
         listener:
-          portNumber: 3000
           filterChain:
             filter:
               name: envoy.http_connection_manager
@@ -26,6 +25,7 @@ spec:
             typeUrl: type.googleapis.com/envoy.config.filter.http.wasm.v2.Wasm
             value:
               config:
+                name: feature_targeting
                 configuration: |
                   {
                     "header_name": "x-features",
@@ -41,7 +41,7 @@ spec:
                       }
                     ]
                   }
-                root_id: feature_targeting
+                root_id: redbadger.feature_targeting
                 vm_config:
                   code:
                     local:

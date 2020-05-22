@@ -8,6 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
+chrono = "0.4.11"
 data-plane = { path = "../data-plane" }
 log = "0.4.8"
 proxy-wasm = "0.1.0"
