@@ -1,3 +1,5 @@
+use data_plane::features;
+use features::explicit::Config as ExplicitConfig;
 use log::{info, warn};
 use proxy_wasm::{
     traits::*,
@@ -5,9 +7,6 @@ use proxy_wasm::{
 };
 use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap};
-
-use data_plane::features;
-use features::explicit::Config as ExplicitConfig;
 use types::Action;
 
 #[derive(Deserialize, Debug)]
