@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use prost::Message;
 use tonic::{Code, Request, Response, Status};
 
@@ -6,7 +8,7 @@ use self::adapter_istio::{
     handle_feature_targeting_service_server::HandleFeatureTargetingService,
     HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg, Params,
 };
-use crate::features;
+use data_plane::features;
 use istio::mixer::adapter::model::v1beta1::CheckResult;
 
 pub mod adapter_istio {
@@ -48,25 +50,32 @@ impl HandleFeatureTargetingService for Service {
             .adapter_config
             .and_then(|cfg| Params::decode(cfg.value.as_ref()).ok())
             .and_then(|params| params.explicit_targeting)
-            .map_or(features::ExplicitMatchingConfig::default(), |tgt| {
-                features::ExplicitMatchingConfig {
-                    host: tgt.hostname_pattern,
-                    header: tgt.override_header,
-                }
+            .map_or(features::explicit::Config::default(), |tgt| {
+                features::explicit::Config(vec![
+                    Box::new(features::explicit::List {
+                        attribute: tgt.override_header,
+                    }),
+                    Box::new(features::explicit::Pattern {
+                        attribute: "host".to_owned(),
+                        pattern: tgt.hostname_pattern,
+                    }),
+                ])
             });
         println!("{:?}", config);
 
         if let Some(inst) = msg.instance {
-            let implicit_features = features::implicit(&inst);
-            let explicit_features = features::explicit(&inst, &config);
+            let mut request: HashMap<&str, &str> = inst
+                .headers
+                .iter()
+                .map(|(k, v)| (k.as_ref(), v.as_ref()))
+                .collect();
+            request.insert("method", inst.method.as_ref());
+            request.insert("path", inst.path.as_ref());
+
+            let ftrs = features::target(&request, &config);
 
             let reply = HandleFeatureTargetingResponse {
-                output: Some(OutputMsg {
-                    features: features::union(
-                        explicit_features.as_ref(),
-                        implicit_features.as_ref(),
-                    ),
-                }),
+                output: Some(OutputMsg { features: ftrs }),
                 result: None::<CheckResult>,
             };
             Ok(Response::new(reply))

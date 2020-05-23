@@ -1,0 +1,5 @@
+namespace: istio-system
+
+resources:
+  - namespace.yaml
+  - profile.yaml

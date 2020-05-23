@@ -1,0 +1,51 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: echo-service-filter
+spec:
+  workloadSelector:
+    labels:
+      app: echo
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        listener:
+          filterChain:
+            filter:
+              name: envoy.http_connection_manager
+              subFilter:
+                name: envoy.router
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.wasm
+          typedConfig:
+            "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+            typeUrl: type.googleapis.com/envoy.config.filter.http.wasm.v2.Wasm
+            value:
+              config:
+                name: feature_targeting
+                configuration: |
+                  {
+                    "header_name": "x-features",
+                    "explicit": [
+                      {
+                        "_extract": "list",
+                        "attribute": "x-feature-override"
+                      },
+                      {
+                        "_extract": "pattern",
+                        "attribute": ":authority",
+                        "pattern": "f-*.localhost"
+                      }
+                    ]
+                  }
+                root_id: redbadger.feature_targeting
+                vm_config:
+                  code:
+                    local:
+                      filename: /var/local/lib/envoy-filters/feature_targeting.wasm
+                  runtime: envoy.wasm.runtime.v8
+                  vm_id: feature_targeting
+                  allow_precompiled: true

@@ -1,0 +1,9 @@
+namespace: echo-service
+
+resources:
+  - namespace.yaml
+  - persistent-volume.yaml
+  - persistent-volume-claim.yaml
+  - deployment.yaml
+  - service.yaml
+  - virtualservice.yaml
