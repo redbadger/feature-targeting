@@ -6,4 +6,3 @@ resources:
   - rbac.yaml
   - deployment.yaml
   - service.yaml
-  - example.yaml

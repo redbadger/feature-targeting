@@ -1,7 +1,6 @@
 apiVersion: red-badger.com/v1alpha1
 kind: FeatureTargetConfig
 metadata:
-  namespace: echo-service
   name: echo
 spec:
   selector:

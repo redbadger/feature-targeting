@@ -20,6 +20,12 @@ static PARENT_TYPE: &K8sType = &K8sType {
     plural_kind: "featuretargetconfigs",
 };
 
+static ENVOY_FILTER_TYPE: &K8sType = &K8sType {
+    api_version: "networking.istio.io/v1alpha3",
+    kind: "EnvoyFilter",
+    plural_kind: "envoyfilters",
+};
+
 /// Represents an instance of the CRD that is in the kubernetes cluster.
 /// Note that this struct does not need to implement Serialize because the
 /// operator will only ever update the `status` sub-resource
@@ -57,7 +63,8 @@ pub fn start() -> anyhow::Result<()> {
     }
     env_logger::init();
 
-    let operator_config = OperatorConfig::new(OPERATOR_NAME, PARENT_TYPE);
+    let operator_config = OperatorConfig::new(OPERATOR_NAME, PARENT_TYPE)
+        .with_child(ENVOY_FILTER_TYPE, ChildConfig::replace());
 
     Err(anyhow!(
         "error running operator: {}",
@@ -69,13 +76,16 @@ pub fn start() -> anyhow::Result<()> {
 /// This just needs to return the desired parent status as well as the desired state for any children.
 fn handle_sync(request: &SyncRequest) -> Result<SyncResponse, Error> {
     info!("Got sync request: {:?}", request);
+
     let status = json!({
-        "message": "Ok", // TODO
+        "message": get_current_status_message(request),
         "phase": "Running",
     });
+
+    let children = get_desired_children(request)?;
     Ok(SyncResponse {
         status,
-        children: vec![],
+        children,
         resync: None,
     })
 }
@@ -92,4 +102,90 @@ fn handle_error(request: &SyncRequest, err: Error) -> (Value, Option<Duration>) 
     });
 
     (status, None)
+}
+
+fn get_current_status_message(request: &SyncRequest) -> String {
+    request
+        .children()
+        .of_type(ENVOY_FILTER_TYPE)
+        .first()
+        .map(|p| {
+            format!(
+                "Filter created at: {}",
+                p.pointer("/metadata/creationTimestamp")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown")
+            )
+        })
+        .unwrap_or_else(|| "Waiting for Filter to be initialized".to_owned())
+}
+
+fn get_desired_children(request: &SyncRequest) -> Result<Vec<Value>, Error> {
+    let custom_resource: FeatureTargetConfig = request.deserialize_parent()?;
+    let configuration = custom_resource.spec.configuration.as_str();
+    let selector = custom_resource.spec.selector;
+
+    let name = format!("{}-filter", custom_resource.metadata.name);
+    let namespace = custom_resource.metadata.namespace.as_str();
+
+    let filter = json!({
+      "apiVersion": ENVOY_FILTER_TYPE.api_version,
+      "kind": ENVOY_FILTER_TYPE.kind,
+      "metadata": {
+        "name": name,
+        "namespace": namespace,
+      },
+      "spec": {
+        "workloadSelector": {
+          "labels": selector,
+        },
+        "configPatches": [
+          {
+            "applyTo": "HTTP_FILTER",
+            "match": {
+              "context": "SIDECAR_INBOUND",
+              "listener": {
+                "filterChain": {
+                  "filter": {
+                    "name": "envoy.http_connection_manager",
+                    "subFilter": {
+                      "name": "envoy.router",
+                    }
+                  }
+                }
+              }
+            },
+            "patch": {
+              "operation": "INSERT_BEFORE",
+              "value": {
+                "name": "envoy.filters.http.wasm",
+                "typedConfig": {
+                  "@type": "type.googleapis.com/udpa.type.v1.TypedStruct",
+                  "typeUrl": "type.googleapis.com/envoy.config.filter.http.wasm.v2.Wasm",
+                  "value": {
+                    "config": {
+                      "name": "feature_targeting",
+                      "configuration": json!(configuration),
+                      "root_id": "redbadger.feature_targeting",
+                      "vm_config": {
+                        "code": {
+                          "local": {
+                            "filename": "/var/local/lib/envoy-filters/feature_targeting.wasm"
+                          }
+                        },
+                        "runtime": "envoy.wasm.runtime.v8",
+                        "vm_id": "feature_targeting",
+                        "allow_precompiled": true,
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    Ok(vec![filter])
 }
