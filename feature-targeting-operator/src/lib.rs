@@ -4,6 +4,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 
+use anyhow::anyhow;
 use log::{error, info};
 use roperator::prelude::*;
 use serde_json::value::Value;
@@ -14,7 +15,7 @@ const OPERATOR_NAME: &str = "feature-targeting";
 
 /// a `K8sType` with basic info about our parent CRD
 static PARENT_TYPE: &K8sType = &K8sType {
-    api_version: "feature-targeting.red-badger.com/v1alpha1",
+    api_version: "red-badger.com/v1alpha1",
     kind: "FeatureTargetConfig",
     plural_kind: "featuretargetconfigs",
 };
@@ -50,21 +51,18 @@ pub struct FeatureTargetStatus {
     pub message: String,
 }
 
-pub fn start() {
+pub fn start() -> anyhow::Result<()> {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "roperator=info,warn");
     }
     env_logger::init();
 
     let operator_config = OperatorConfig::new(OPERATOR_NAME, PARENT_TYPE);
-    // .with_child(k8s_types::core::v1::Pod, ChildConfig::recreate())
-    // .with_child(k8s_types::core::v1::Service, ChildConfig::replace());
 
-    let err = roperator::runner::run_operator(operator_config, (handle_sync, handle_error));
-
-    // `run_operator` will never return under normal circumstances, so we only need to handle the sad path here
-    error!("Error running operator: {}", err);
-    std::process::exit(1);
+    Err(anyhow!(
+        "error running operator: {}",
+        roperator::runner::run_operator(operator_config, (handle_sync, handle_error),)
+    ))
 }
 
 /// This function will invoked by the operator any time there's a change to any parent or child resources.
@@ -86,7 +84,7 @@ fn handle_sync(request: &SyncRequest) -> Result<SyncResponse, Error> {
 /// It needs to respond with the appropriate status for the given request and error and the minimum length of
 /// time to wait before calling `handle_sync` again.
 fn handle_error(request: &SyncRequest, err: Error) -> (Value, Option<Duration>) {
-    log::error!("Failed to process request: {:?}\nCause: {:?}", request, err);
+    error!("Failed to process request: {:?}\nCause: {:?}", request, err);
 
     let status = json!({
         "message": err.to_string(),

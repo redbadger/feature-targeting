@@ -1,4 +1,4 @@
-apiVersion: feature-targeting.red-badger.com/v1alpha1
+apiVersion: red-badger.com/v1alpha1
 kind: FeatureTargetConfig
 metadata:
   namespace: echo-service
