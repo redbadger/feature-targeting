@@ -81,8 +81,8 @@ fn handle_sync(request: &SyncRequest) -> Result<SyncResponse, Error> {
         "message": get_current_status_message(request),
         "phase": "Running",
     });
-
     let children = get_desired_children(request)?;
+
     Ok(SyncResponse {
         status,
         children,
@@ -117,7 +117,7 @@ fn get_current_status_message(request: &SyncRequest) -> String {
                     .unwrap_or("unknown"),
                 p.pointer("/metadata/generation")
                     .and_then(Value::as_u64)
-                    .unwrap_or(0)
+                    .unwrap_or_default()
             )
         })
         .unwrap_or_else(|| "Waiting for Filter to be initialized".to_owned())
