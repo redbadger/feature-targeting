@@ -1,4 +1,3 @@
-//! Example of using roperator to create an operator for an `FeatureTargetConfig` example Custom Resource
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
@@ -20,13 +19,14 @@ static PARENT_TYPE: &K8sType = &K8sType {
     plural_kind: "featuretargetconfigs",
 };
 
+/// a `K8sType` with basic info about the `EnvoyFilter` Istio CRD
 static ENVOY_FILTER_TYPE: &K8sType = &K8sType {
     api_version: "networking.istio.io/v1alpha3",
     kind: "EnvoyFilter",
     plural_kind: "envoyfilters",
 };
 
-/// Represents an instance of the CRD that is in the kubernetes cluster.
+/// Represents an instance of the CRD that is in the Kubernetes cluster.
 /// Note that this struct does not need to implement Serialize because the
 /// operator will only ever update the `status` sub-resource
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -68,7 +68,7 @@ pub fn start() -> anyhow::Result<()> {
 
     Err(anyhow!(
         "error running operator: {}",
-        roperator::runner::run_operator(operator_config, (handle_sync, handle_error),)
+        roperator::runner::run_operator(operator_config, (handle_sync, handle_error))
     ))
 }
 
@@ -111,10 +111,13 @@ fn get_current_status_message(request: &SyncRequest) -> String {
         .first()
         .map(|p| {
             format!(
-                "Filter created at: {}",
+                "Filter created at: {}, Generation {}",
                 p.pointer("/metadata/creationTimestamp")
                     .and_then(Value::as_str)
-                    .unwrap_or("unknown")
+                    .unwrap_or("unknown"),
+                p.pointer("/metadata/generation")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0)
             )
         })
         .unwrap_or_else(|| "Waiting for Filter to be initialized".to_owned())
@@ -122,22 +125,17 @@ fn get_current_status_message(request: &SyncRequest) -> String {
 
 fn get_desired_children(request: &SyncRequest) -> Result<Vec<Value>, Error> {
     let custom_resource: FeatureTargetConfig = request.deserialize_parent()?;
-    let configuration = custom_resource.spec.configuration.as_str();
-    let selector = custom_resource.spec.selector;
-
-    let name = format!("{}-filter", custom_resource.metadata.name);
-    let namespace = custom_resource.metadata.namespace.as_str();
 
     let filter = json!({
       "apiVersion": ENVOY_FILTER_TYPE.api_version,
       "kind": ENVOY_FILTER_TYPE.kind,
       "metadata": {
-        "name": name,
-        "namespace": namespace,
+        "name": format!("{}-filter", custom_resource.metadata.name),
+        "namespace": custom_resource.metadata.namespace,
       },
       "spec": {
         "workloadSelector": {
-          "labels": selector,
+          "labels": custom_resource.spec.selector,
         },
         "configPatches": [
           {
@@ -165,7 +163,7 @@ fn get_desired_children(request: &SyncRequest) -> Result<Vec<Value>, Error> {
                   "value": {
                     "config": {
                       "name": "feature_targeting",
-                      "configuration": json!(configuration),
+                      "configuration": json!(custom_resource.spec.configuration),
                       "root_id": "redbadger.feature_targeting",
                       "vm_config": {
                         "code": {

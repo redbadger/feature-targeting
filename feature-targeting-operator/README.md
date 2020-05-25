@@ -120,7 +120,7 @@ Metadata:
   Finalizers:
     feature-targeting
   Generation:        4
-  Resource Version:  456698
+  Resource Version:  488014
   Self Link:         /apis/red-badger.com/v1alpha1/namespaces/echo-service/featuretargetconfigs/echo
   UID:               ddf66595-45ff-4de5-8b15-f092aa05d1c7
 Spec:
@@ -142,7 +142,7 @@ Spec:
   Selector:
     App:  echo
 Status:
-  Message:              Filter created at: 2020-05-24T14:12:03Z
+  Message:              Filter created at: 2020-05-24T14:12:03Z, Generation 3
   Observed Generation:  4
   Phase:                Running
 Events:                 <none>
@@ -186,3 +186,5 @@ curl --resolve f-echo.localhost:80:127.0.0.1 -vvv http://f-echo.localhost -H x-f
 * Connection #0 to host f-echo.localhost left intact
 {"path":"/","headers":{"host":"f-echo.localhost","user-agent":"curl/7.64.1","accept":"*/*","x-feature-override":"viktor","x-forwarded-for":"192.168.65.3","x-forwarded-proto":"http","x-request-id":"42e52fee-c8e9-4c65-8fe5-11c9bd2bb05c","content-length":"0","x-envoy-internal":"true","x-forwarded-client-cert":"By=spiffe://cluster.local/ns/echo-service/sa/default;Hash=73ddec0d7911bd15c46bb2b7c38dbae1acefe7585de9aa2639b5ea4bccbc4a71;Subject=\"\";URI=spiffe://cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account","x-features":"echo new_feature viktor","x-b3-traceid":"2c4fc919aebee1eb135e17fecd56a81c","x-b3-spanid":"064ca899e56f374d","x-b3-parentspanid":"135e17fecd56a81c","x-b3-sampled":"0"},"method":"GET","body":{},"fresh":false,"hostname":"f-echo.localhost","ip":"::ffff:127.0.0.1","ips":[],"protocol":"http","query":{},"subdomains":[],"xhr":false}* Closing connection 0
 ```
+
+Try changing the `FeatureTargetConfig` CRD and make another `curl` request to observe the effect.
