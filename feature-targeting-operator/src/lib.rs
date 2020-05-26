@@ -109,13 +109,13 @@ fn get_current_status_message(request: &SyncRequest) -> String {
         .children()
         .of_type(ENVOY_FILTER_TYPE)
         .first()
-        .map(|p| {
+        .map(|filter| {
             format!(
                 "Filter created at: {}, Generation {}",
-                p.pointer("/metadata/creationTimestamp")
+                filter.pointer("/metadata/creationTimestamp")
                     .and_then(Value::as_str)
                     .unwrap_or("unknown"),
-                p.pointer("/metadata/generation")
+                filter.pointer("/metadata/generation")
                     .and_then(Value::as_u64)
                     .unwrap_or_default()
             )
