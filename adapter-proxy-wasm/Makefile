@@ -3,6 +3,10 @@
 build-image: release ./feature_targeting.wasm
 	wasme build precompiled feature_targeting.wasm --tag feature-targeting:0.1.0
 
+install: release ./feature_targeting.wasm
+	mkdir -p /tmp/envoy-filters
+	cp ./feature_targeting.wasm /tmp/envoy-filters/feature_targeting.wasm
+
 # Running with istio/proxyv2:1.5.x is key
 run-local:
 	wasme deploy envoy feature-targeting:0.1.0 \
