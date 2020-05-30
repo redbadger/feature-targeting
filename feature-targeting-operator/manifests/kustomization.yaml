@@ -1,0 +1,8 @@
+namespace: feature-targeting
+
+resources:
+  - namespace.yaml
+  - crd.yaml
+  - rbac.yaml
+  - deployment.yaml
+  - service.yaml

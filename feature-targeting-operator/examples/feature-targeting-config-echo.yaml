@@ -1,0 +1,22 @@
+apiVersion: red-badger.com/v1alpha1
+kind: FeatureTargetConfig
+metadata:
+  name: echo
+spec:
+  selector:
+    app: echo
+  configuration: |
+    {
+      "header_name": "x-features",
+      "explicit": [
+        {
+          "_extract": "list",
+          "attribute": "x-feature-override"
+        },
+        {
+          "_extract": "pattern",
+          "attribute": ":authority",
+          "pattern": "f-*.localhost"
+        }
+      ]
+    }

@@ -1,0 +1,4 @@
+namespace: echo-service
+
+resources:
+  - feature-targeting-config-echo.yaml

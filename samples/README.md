@@ -7,8 +7,9 @@ can provide.
 
 This example uses a WASM Envoy filter
 
-- create a cluster and install Istio: [`init-cluster`](./wasm-envoy-filter/1-istio/README.md)
-- install the feature targeting Istio adapter [`enable-adapter`](./wasm-envoy-filter/2-adapter/README.md)
+First, create a cluster and install Istio 1.6 (see the [readme](./wasm-envoy-filter/1-istio/README.md)).
+
+Then, either submit an `EnvoyFilter` resource directly (see the [readme](./wasm-envoy-filter/2-adapter/README.md)), or configure the `feature-targeting-operator` (see the [readme](../feature-targeting-operator/README.md)) and submit a (much simpler) `FeatureTargetingConfig` CRD.
 
 ## Getting started with Istio 1.4.x, and below
 

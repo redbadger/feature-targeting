@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feature-targeting
+  labels:
+    app: feature-targeting
+spec:
+  selector:
+    matchLabels:
+      app: feature-targeting
+  template:
+    metadata:
+      labels:
+        app: feature-targeting
+    spec:
+      containers:
+        - name: feature-targeting
+          image: feature-targeting-operator
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
