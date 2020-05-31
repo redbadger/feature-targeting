@@ -1,9 +1,14 @@
 use std::collections::HashMap;
 
 // A set of pairs (feature-name, rule)
-pub struct Config(pub Vec<(String, Rule)>);
+pub struct Config(pub Vec<Feature>);
 
 // Rule is a logical expression evaluated on a HashMap<&str,&str>
+
+pub struct Feature {
+    name: String,
+    rule: Rule,
+}
 
 pub enum Rule {
     Pred(String, Predicate),
@@ -25,7 +30,7 @@ pub fn from_request<'a>(request: HashMap<&str, &str>, config: &'a Config) -> Vec
     config
         .0
         .iter()
-        .filter_map(|(name, rule)| {
+        .filter_map(|Feature { name, rule }| {
             if rule.matches(&request) {
                 Some(name.as_ref())
             } else {
@@ -38,11 +43,12 @@ pub fn from_request<'a>(request: HashMap<&str, &str>, config: &'a Config) -> Vec
 impl Rule {
     pub fn matches(&self, request: &HashMap<&str, &str>) -> bool {
         match self {
-            Rule::Pred(attribute, rule) => {
-                let key: &str = attribute.as_ref(); // FIXME not sure why this is needed
-                request.get(key).map_or(false, |value| rule.eval(*value))
-            }
-            _ => false,
+            Rule::Pred(attribute, rule) => request
+                .get::<str>(attribute.as_ref())
+                .map_or(rule.eval(""), |value| rule.eval(*value)), // FIXME consider separating missing and empty value
+            Rule::And(rules) => rules.iter().all(|rule| rule.matches(request)),
+            Rule::Or(rules) => rules.iter().any(|rule| rule.matches(request)),
+            Rule::Not(rule) => !rule.matches(request),
         }
     }
 }
@@ -63,7 +69,6 @@ impl Predicate {
 mod test {
     use super::Predicate::{Eq, Gt, Gte, Lt, Lte};
     use super::*;
-    use std::iter::FromIterator;
     use test_case::test_case;
 
     #[test_case(Eq("foo".to_owned()), "foo", true)]
@@ -86,30 +91,88 @@ mod test {
 
     #[test]
     fn matches_a_simple_predicate_rule() {
-        let req = HashMap::from_iter(
-            vec![
-                (":auth", "viktor@email.com"),
-                (":region", "uk"),
-                ("accept-language", "cs"),
-                ("x-session-id", "21527782"),
-            ]
-            .iter()
-            .map(|it| *it),
-        );
+        let req = [
+            (":auth", "viktor@email.com"),
+            (":region", "uk"),
+            ("accept-language", "cs"),
+            ("x-session-id", "21527782"),
+        ]
+        .iter()
+        .cloned()
+        .collect();
 
         let config = Config(vec![
-            (
-                "english".to_owned(),
-                Rule::Pred("accept-language".to_owned(), Eq("en".to_owned())),
-            ),
-            (
-                "british".to_owned(),
-                Rule::Pred(":region".to_owned(), Eq("uk".to_owned())),
-            ),
+            Feature {
+                name: "english".into(),
+                rule: Rule::Pred("accept-language".into(), Eq("en".into())),
+            },
+            Feature {
+                name: "british".into(),
+                rule: Rule::Pred(":region".into(), Eq("uk".into())),
+            },
         ]);
 
-        let expected = vec!["british"];
+        assert_eq!(from_request(req, &config), vec!["british"]);
+    }
 
-        assert_eq!(from_request(req, &config), expected);
+    #[test]
+    fn matches_a_complex_rule() {
+        let british_req = [
+            (":auth", "viktor@email.com"),
+            (":region", "uk"),
+            ("accept-language", "cs"),
+            ("x-session-id", "21527782"),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        let english_req = [
+            (":auth", "viktor@email.com"),
+            (":region", "de"),
+            ("accept-language", "en"),
+            ("x-session-id", "21527782"),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        let anonymous_req = [
+            (":region", "uk"),
+            ("accept-language", "cs"),
+            ("x-session-id", "21527782"),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        let config = Config(vec![
+            Feature {
+                name: "english".into(),
+                // (accept-language == en OR :region == uk) AND NOT(:auth == "")
+                rule: Rule::And(vec![
+                    Rule::Or(vec![
+                        Rule::Pred("accept-language".into(), Eq("en".into())),
+                        Rule::Pred(":region".into(), Eq("uk".into())),
+                    ]),
+                    Rule::Not(Box::new(Rule::Pred(":auth".into(), Eq("".into())))),
+                ]),
+            },
+            Feature {
+                name: "british".into(),
+                // :region == uk AND NOT(:auth == "")
+                rule: Rule::And(vec![
+                    Rule::Pred(":region".into(), Eq("uk".into())),
+                    Rule::Not(Box::new(Rule::Pred(":auth".into(), Eq("".into())))),
+                ]),
+            },
+        ]);
+
+        assert_eq!(
+            from_request(british_req, &config),
+            vec!["english", "british"]
+        );
+        assert_eq!(from_request(english_req, &config), vec!["english"]);
+        assert_eq!(from_request(anonymous_req, &config), Vec::<&str>::new());
     }
 }
