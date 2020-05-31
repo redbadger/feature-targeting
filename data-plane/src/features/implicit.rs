@@ -3,13 +3,13 @@ use std::collections::HashMap;
 // A set of pairs (feature-name, rule)
 pub struct Config(pub Vec<Feature>);
 
-// Rule is a logical expression evaluated on a HashMap<&str,&str>
-
+// Feature represents implicit targeting coniguration for a single feature flag
 pub struct Feature {
     name: String,
     rule: Rule,
 }
 
+// Rule is a logical expression evaluated on a HashMap<&str,&str>
 pub enum Rule {
     Pred(String, Predicate),
     Not(Box<Rule>),
@@ -45,7 +45,7 @@ impl Rule {
         match self {
             Rule::Pred(attribute, rule) => request
                 .get::<str>(attribute.as_ref())
-                .map_or(rule.eval(""), |value| rule.eval(*value)), // FIXME consider separating missing and empty value
+                .map_or(rule.matches(""), |value| rule.matches(*value)), // FIXME consider separating missing and empty value
             Rule::And(rules) => rules.iter().all(|rule| rule.matches(request)),
             Rule::Or(rules) => rules.iter().any(|rule| rule.matches(request)),
             Rule::Not(rule) => !rule.matches(request),
@@ -54,7 +54,7 @@ impl Rule {
 }
 
 impl Predicate {
-    pub fn eval(&self, value: &str) -> bool {
+    pub fn matches(&self, value: &str) -> bool {
         match self {
             Predicate::Eq(v) => value == v,
             Predicate::Gt(n) => value.parse().map_or(false, |num: f64| num > *n),
@@ -86,7 +86,7 @@ mod test {
     #[test_case(Lte(10.31), "10.3", true)]
     #[test_case(Lte(10.3), "10.3", true)]
     fn predicate(rule: Predicate, value: &str, outcome: bool) {
-        assert_eq!(rule.eval(value), outcome);
+        assert_eq!(rule.matches(value), outcome);
     }
 
     #[test]
