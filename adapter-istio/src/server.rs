@@ -1,19 +1,19 @@
-use std::collections::HashMap;
-
-use prost::Message;
-use tonic::{Code, Request, Response, Status};
-
 pub use self::adapter_istio::handle_feature_targeting_service_server::HandleFeatureTargetingServiceServer;
 use self::adapter_istio::{
     handle_feature_targeting_service_server::HandleFeatureTargetingService,
     HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg, Params,
 };
 use data_plane::features;
+use features::explicit;
 use istio::mixer::adapter::model::v1beta1::CheckResult;
+use prost::Message;
+use std::collections::HashMap;
+use tonic::{Code, Request, Response, Status};
 
 pub mod adapter_istio {
     tonic::include_proto!("featuretargeting");
 }
+
 pub mod istio {
     pub mod mixer {
         pub mod adapter {
@@ -25,6 +25,7 @@ pub mod istio {
         }
     }
 }
+
 pub mod google {
     pub mod protobuf {
         tonic::include_proto!("google.protobuf");
@@ -50,12 +51,12 @@ impl HandleFeatureTargetingService for Service {
             .adapter_config
             .and_then(|cfg| Params::decode(cfg.value.as_ref()).ok())
             .and_then(|params| params.explicit_targeting)
-            .map_or(features::explicit::Config::default(), |tgt| {
-                features::explicit::Config(vec![
-                    Box::new(features::explicit::List {
+            .map_or(explicit::Config::default(), |tgt| {
+                explicit::Config(vec![
+                    explicit::Extract::List(explicit::List {
                         attribute: tgt.override_header,
                     }),
-                    Box::new(features::explicit::Pattern {
+                    explicit::Extract::Pattern(explicit::Pattern {
                         attribute: "host".to_owned(),
                         pattern: tgt.hostname_pattern,
                     }),

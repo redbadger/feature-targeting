@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
-// A set of pairs (feature-name, rule)
+/// A set of pairs (feature-name, rule)
 pub struct Config(pub Vec<Feature>);
 
-// Feature represents implicit targeting coniguration for a single feature flag
+/// Feature represents implicit targeting configuration for a single feature flag
 pub struct Feature {
     name: String,
     rule: Rule,
 }
 
-// Rule is a logical expression evaluated on a HashMap<&str,&str>
+/// Rule is a logical expression evaluated on a HashMap<&str,&str>
 pub enum Rule {
     Pred(String, Predicate),
     Not(Box<Rule>),
@@ -17,7 +17,7 @@ pub enum Rule {
     Or(Vec<Rule>),
 }
 
-// Predicatea to evaluate on attribute values
+/// Predicates to evaluate on attribute values
 pub enum Predicate {
     Eq(String), // ==
     Gt(f64),    // >
@@ -67,8 +67,10 @@ impl Predicate {
 
 #[cfg(test)]
 mod test {
-    use super::Predicate::{Eq, Gt, Gte, Lt, Lte};
-    use super::*;
+    use super::{
+        Predicate::{Eq, Gt, Gte, Lt, Lte},
+        *,
+    };
     use test_case::test_case;
 
     #[test_case(Eq("foo".to_owned()), "foo", true)]

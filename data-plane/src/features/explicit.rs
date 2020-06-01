@@ -14,7 +14,7 @@ pub fn from_request<'a>(request: &HashMap<&str, &'a str>, config: &Config) -> Ve
     features
 }
 
-// Configuration
+/// Configuration
 #[derive(Debug, Deserialize)]
 pub struct Config(pub Vec<Extract>);
 
@@ -44,7 +44,7 @@ impl Extract {
     }
 }
 
-// List of features in an attribute
+/// List of features in an attribute
 #[derive(Debug, Deserialize)]
 pub struct List {
     pub attribute: String,
@@ -78,10 +78,10 @@ impl Pattern {
     }
 }
 
-fn match_pattern<'a, 'b>(value: &'a str, pattern: &'b str) -> Option<&'a str> {
+fn match_pattern<'a>(value: &'a str, pattern: &str) -> Option<&'a str> {
     let tokens = pattern.split('*').collect::<Vec<&str>>();
 
-    let (prefix, postfix) = match tokens.as_slice() {
+    let (prefix, postfix) = match &tokens[..] {
         [prefix, postfix] => (prefix, postfix),
         _ => return None,
     };
