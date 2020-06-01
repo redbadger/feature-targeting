@@ -13,3 +13,4 @@ serde_json = "1.0.53"
 [dev-dependencies]
 test-case = "1.0.0"
 lazy_static = "1.4.0"
+pretty_assertions = "0.6.1"
