@@ -1,16 +1,23 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// A set of pairs (feature-name, rule)
+#[derive(Deserialize, Serialize)]
 pub struct Config(pub Vec<Feature>);
 
 /// Feature represents implicit targeting configuration for a single feature flag
+#[derive(Deserialize, Serialize)]
 pub struct Feature {
     name: String,
+    #[serde(flatten)]
     rule: Rule,
 }
 
 /// Rule is a logical expression evaluated on a HashMap<&str,&str>
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Rule {
+    #[serde(rename = "predicate")]
     Pred(String, Predicate),
     Not(Box<Rule>),
     And(Vec<Rule>),
@@ -18,6 +25,8 @@ pub enum Rule {
 }
 
 /// Predicates to evaluate on attribute values
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Predicate {
     Eq(String), // ==
     Gt(f64),    // >

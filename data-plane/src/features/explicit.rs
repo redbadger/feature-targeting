@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use serde::Deserialize;
+use std::collections::HashMap;
 
 pub fn from_request<'a>(request: &HashMap<&str, &'a str>, config: &Config) -> Vec<&'a str> {
     let mut features = config
