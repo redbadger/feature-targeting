@@ -27,6 +27,7 @@ pub fn from_request<'a>(request: HashMap<&str, &str>, config: &'a Config) -> Vec
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum BoolExpr {
     Constant(bool),
     Attribute(String), // Request attribute of name is present
@@ -89,6 +90,7 @@ impl BoolExpr {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StringListExpr {
     Constant(Vec<String>),
     Split {
@@ -112,6 +114,7 @@ impl StringListExpr {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StringExpr {
     Constant(String),
     Attribute(String), // Request attribute value
@@ -152,6 +155,7 @@ impl StringExpr {
 
 // Numerical value extractors
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum NumExpr {
     Constant(f64),
     Attribute(String), // Request attribute value
@@ -271,8 +275,6 @@ mod test {
 
     #[test]
     fn serialises_to_json() {
-        todo!();
-
         let config = Config(vec![
             Feature {
                 name: "english".into(),
