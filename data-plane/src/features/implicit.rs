@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::hash::Hasher;
+use std::{
+    collections::{hash_map::DefaultHasher, HashMap},
+    hash::{Hash, Hasher},
+};
 
 /// A set of features and their matching rules
 #[derive(Deserialize, Serialize)]
@@ -106,6 +106,7 @@ impl StringListExpr {
             StringListExpr::Constant(c) => Ok(c.clone()),
             StringListExpr::Split { separator, value } => todo!(),
             StringListExpr::AcceptLanguage => todo!(),
+            StringListExpr::Accept => todo!(),
         }
     }
 }
