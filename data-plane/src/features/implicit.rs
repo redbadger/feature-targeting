@@ -538,7 +538,7 @@ mod test {
                     "any_in": {
                         "list": { "constant": ["en","en-US","en-GB"] },
                         "values": {
-                            "http_quality_value": { "attribute":"accept-language" }
+                            "http_quality_value": { "attribute": "accept-language" }
                         }
                     }
                 }
@@ -550,7 +550,7 @@ mod test {
                         {
                             "in": {
                                 "list": {
-                                    "http_quality_value": { "attribute":"accept-language" }
+                                    "http_quality_value": { "attribute": "accept-language" }
                                 },
                                 "value": { "constant": "en" }
                             }
@@ -558,7 +558,7 @@ mod test {
                         {
                             "in": {
                                 "list": {
-                                    "http_quality_value": { "attribute":"accept-language" }
+                                    "http_quality_value": { "attribute": "accept-language" }
                                 },
                                 "value": { "constant": "en-US" }
                             }
@@ -566,7 +566,7 @@ mod test {
                         {
                             "in": {
                                 "list": {
-                                    "http_quality_value": { "attribute":"accept-language" }
+                                    "http_quality_value": { "attribute": "accept-language" }
                                 },
                                 "value": { "constant": "en-GB" }
                             }
@@ -579,7 +579,7 @@ mod test {
                 "rule": {
                     "in": {
                         "list": {
-                            "http_quality_value": { "attribute":"accept-language" }
+                            "http_quality_value": { "attribute": "accept-language" }
                         },
                         "value": { "constant": "en-GB" }
                     }
