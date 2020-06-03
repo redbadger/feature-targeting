@@ -98,19 +98,45 @@ pub enum StringListExpr {
         separator: String,
         value: StringExpr,
     },
-    Accept,         // Accepted mime types in weight order
-    AcceptLanguage, // Accepted languages in weight order
+    // Parse a HTTP header with q-values,
+    // i.e. Accept, Accept-Charset, Accept-Language, Accept-Encoding
+    HttpQualityValue(StringExpr),
 }
 
 impl StringListExpr {
     fn eval(&self, request: &HashMap<&str, &str>) -> Result<Vec<String>, String> {
         match &self {
             StringListExpr::Constant(c) => Ok(c.clone()),
-            StringListExpr::Split { separator, value } => todo!(),
-            StringListExpr::AcceptLanguage => todo!(),
-            StringListExpr::Accept => todo!(),
+            StringListExpr::Split { separator, value } => value.eval(request).map(|s| {
+                s.split(separator)
+                    .map(|item| item.to_string())
+                    .collect::<Vec<_>>()
+            }),
+            StringListExpr::HttpQualityValue(value) => value.eval(request).map(|s| parse_qvalue(s)),
         }
     }
+}
+
+// Parse a HTTP q-value of the form '*/*;q=0.3, text/plain;q=0.7, text/html, text/*;q=0.5'
+fn parse_qvalue(value: String) -> Vec<String> {
+    let mut list: Vec<(&str, f32)> = value
+        .split(",")
+        .map(|qval| {
+            let mut parts = qval.split(";q=").map(|it| it.trim());
+            let v = parts.next().unwrap();
+            let q = parts
+                .next()
+                .and_then(|q| q.parse::<f32>().ok())
+                .or(Some(1.0))
+                .unwrap();
+
+            (v, q)
+        })
+        .collect();
+
+    list.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+    list.iter().map(|(v, _)| v.to_string()).collect::<Vec<_>>()
 }
 
 #[derive(Deserialize, Serialize)]
@@ -218,6 +244,24 @@ mod test {
         assert_eq!(expr.eval(&request), expected)
     }
 
+    #[test_case(StringListExpr::Constant(vec!["a".into(), "b".into()]), Ok(vec!["a".into(), "b".into()]))]
+    #[test_case(StringListExpr::Split { separator: " ".into(), value: StringExpr::Constant("a b".into())}, Ok(vec!["a".into(), "b".into()]))]
+    #[test_case(StringListExpr::HttpQualityValue(StringExpr::Attribute("accept".into())), Ok(vec!["text/html".into(), "text/plain".into(), "text/*".into(), "*/*".into()]))]
+    fn evaluate_string_list_expressions(
+        expr: StringListExpr,
+        expected: Result<Vec<String>, String>,
+    ) {
+        let request = [(
+            "accept",
+            "*/*;q=0.3, text/plain;q=0.7, text/html, text/*;q=0.5",
+        )]
+        .iter()
+        .cloned()
+        .collect();
+
+        assert_eq!(expr.eval(&request), expected)
+    }
+
     #[test_case(BoolExpr::Constant(true), Ok(true))]
     fn evaluate_boolean_expressions(expr: BoolExpr, expected: Result<bool, String>) {
         let request = [("hello", "world")].iter().cloned().collect();
@@ -241,22 +285,30 @@ mod test {
                         "en-US".into(),
                         "en-GB".into(),
                     ]),
-                    values: StringListExpr::AcceptLanguage,
+                    values: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                        "accept-language".into(),
+                    )),
                 },
             },
             Feature {
                 name: "other-english".into(),
                 rule: BoolExpr::Or(vec![
                     BoolExpr::In {
-                        list: StringListExpr::AcceptLanguage,
+                        list: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                            "accept-language".into(),
+                        )),
                         value: StringExpr::Constant("en".into()),
                     },
                     BoolExpr::In {
-                        list: StringListExpr::AcceptLanguage,
+                        list: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                            "accept-language".into(),
+                        )),
                         value: StringExpr::Constant("en-US".into()),
                     },
                     BoolExpr::In {
-                        list: StringListExpr::AcceptLanguage,
+                        list: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                            "accept-language".into(),
+                        )),
                         value: StringExpr::Constant("en-GB".into()),
                     },
                 ]),
@@ -264,7 +316,9 @@ mod test {
             Feature {
                 name: "british".into(),
                 rule: BoolExpr::In {
-                    list: StringListExpr::AcceptLanguage,
+                    list: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                        "accept-language".into(),
+                    )),
                     value: StringExpr::Constant("en-GB".into()),
                 },
             },
@@ -284,22 +338,30 @@ mod test {
                         "en-US".into(),
                         "en-GB".into(),
                     ]),
-                    values: StringListExpr::AcceptLanguage,
+                    values: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                        "accept-language".into(),
+                    )),
                 },
             },
             Feature {
                 name: "other-english".into(),
                 rule: BoolExpr::Or(vec![
                     BoolExpr::In {
-                        list: StringListExpr::AcceptLanguage,
+                        list: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                            "accept-language".into(),
+                        )),
                         value: StringExpr::Constant("en".into()),
                     },
                     BoolExpr::In {
-                        list: StringListExpr::AcceptLanguage,
+                        list: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                            "accept-language".into(),
+                        )),
                         value: StringExpr::Constant("en-US".into()),
                     },
                     BoolExpr::In {
-                        list: StringListExpr::AcceptLanguage,
+                        list: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                            "accept-language".into(),
+                        )),
                         value: StringExpr::Constant("en-GB".into()),
                     },
                 ]),
@@ -307,7 +369,9 @@ mod test {
             Feature {
                 name: "british".into(),
                 rule: BoolExpr::In {
-                    list: StringListExpr::AcceptLanguage,
+                    list: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                        "accept-language".into(),
+                    )),
                     value: StringExpr::Constant("en-GB".into()),
                 },
             },
