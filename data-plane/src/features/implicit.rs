@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap},
+    collections::{hash_map::DefaultHasher, HashMap, HashSet},
     hash::{Hash, Hasher},
 };
 
@@ -71,21 +71,28 @@ impl BoolExpr {
                 .map_or(Err(format!("Attribute '{}' not found.", name)), |_| {
                     Ok(true)
                 }),
-            BoolExpr::In {
-                list: _list,
-                value: _value,
-            } => todo!(),
-            BoolExpr::AnyIn {
-                list: _list,
-                values: _values,
-            } => todo!(),
-            BoolExpr::AllIn {
-                list: _list,
-                values: _values,
-            } => todo!(),
+            BoolExpr::In { list, value } => list
+                .eval(request)
+                .and_then(|haystack| value.eval(request).map(|needle| haystack.contains(&needle))),
+            BoolExpr::AnyIn { list, values } => list.eval(request).and_then(|haystack| {
+                values.eval(request).map(|needles| {
+                    let a: HashSet<_> = haystack.iter().collect();
+                    let b: HashSet<_> = needles.iter().collect();
+
+                    a.intersection(&b).next().is_some()
+                })
+            }),
+            BoolExpr::AllIn { list, values } => list.eval(request).and_then(|haystack| {
+                values.eval(request).map(|needles| {
+                    let a: HashSet<_> = haystack.iter().collect();
+                    let b: HashSet<_> = needles.iter().collect();
+
+                    a.intersection(&b).collect::<Vec<_>>().len() == a.len()
+                })
+            }),
             BoolExpr::JsonPointer {
-                pointer: _pointer,
-                value: _value,
+                pointer: _,
+                value: _,
             } => todo!(),
             BoolExpr::Matches(_regex, _value) => todo!(),
             BoolExpr::StrEq(_left, _right) => todo!(),
@@ -94,9 +101,17 @@ impl BoolExpr {
             BoolExpr::Lt(_left, _right) => todo!(),
             BoolExpr::Gte(_left, _right) => todo!(),
             BoolExpr::Lte(_left, _right) => todo!(),
-            BoolExpr::Not(_value) => todo!(),
-            BoolExpr::And(_values) => todo!(),
-            BoolExpr::Or(_values) => todo!(),
+            BoolExpr::Not(value) => value.eval(request).map(|v| !v),
+            BoolExpr::And(values) => values
+                .iter()
+                .map(|v| v.eval(request))
+                .collect::<Result<Vec<_>, _>>()
+                .map(|it| it.iter().all(|v| *v == true)),
+            BoolExpr::Or(values) => values
+                .iter()
+                .map(|v| v.eval(request))
+                .collect::<Result<Vec<_>, _>>()
+                .map(|it| it.iter().any(|v| *v == true)),
         }
     }
 }
@@ -279,6 +294,19 @@ mod test {
     }
 
     #[test_case(BoolExpr::Constant(true), Ok(true))]
+    #[test_case(BoolExpr::Attribute("hello".into()), Ok(true))]
+    #[test_case(BoolExpr::Attribute("world".into()), Err("Attribute 'world' not found.".into()))]
+    #[test_case(BoolExpr::In { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), value: StringExpr::Constant("b".into()) }, Ok(true); "list contains value")]
+    #[test_case(BoolExpr::In { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), value: StringExpr::Constant("c".into()) }, Ok(false); "list doesn't contain value")]
+    #[test_case(BoolExpr::AllIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["a".into(), "b".into()]) }, Ok(true); "list contains all values")]
+    #[test_case(BoolExpr::AllIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["a".into(), "c".into()]) }, Ok(false); "list doesn't contain all values")]
+    #[test_case(BoolExpr::AnyIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["a".into(), "c".into()]) }, Ok(true); "list contains any of the values")]
+    #[test_case(BoolExpr::AnyIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["c".into(), "d".into()]) }, Ok(false); "list doesn't contain any of the values")]
+    #[test_case(BoolExpr::Not(Box::new(BoolExpr::Constant(true))), Ok(false))]
+    #[test_case(BoolExpr::And(vec![BoolExpr::Constant(true), BoolExpr::Constant(true)]), Ok(true))]
+    #[test_case(BoolExpr::And(vec![BoolExpr::Constant(true), BoolExpr::Constant(false)]), Ok(false))]
+    #[test_case(BoolExpr::Or(vec![BoolExpr::Constant(true), BoolExpr::Constant(false)]), Ok(true))]
+    #[test_case(BoolExpr::Or(vec![BoolExpr::Constant(false), BoolExpr::Constant(false)]), Ok(false))]
     fn evaluate_boolean_expressions(expr: BoolExpr, expected: Result<bool, String>) {
         let request = [("hello", "world")].iter().cloned().collect();
 
@@ -286,7 +314,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn matches_a_complex_expression() {
         let req = [("accept-language", "en-GB,en;q=0.9,cs;q=0.8")]
             .iter()
@@ -339,9 +366,21 @@ mod test {
                     value: StringExpr::Constant("en-GB".into()),
                 },
             },
+            Feature {
+                name: "german".into(),
+                rule: BoolExpr::In {
+                    list: StringListExpr::HttpQualityValue(StringExpr::Attribute(
+                        "accept-language".into(),
+                    )),
+                    value: StringExpr::Constant("de".into()),
+                },
+            },
         ]);
 
-        assert_eq!(from_request(req, &config), vec!["british"]);
+        assert_eq!(
+            from_request(req, &config),
+            vec!["english", "other-english", "british"]
+        );
     }
 
     #[test]
