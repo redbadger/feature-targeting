@@ -165,7 +165,9 @@ fn parse_q_value(value: String) -> Vec<String> {
 
     list.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
-    list.iter().map(|(v, _)| v.to_string()).collect::<Vec<_>>()
+    list.iter()
+        .map(|(v, _)| (*v).to_string())
+        .collect::<Vec<_>>()
 }
 
 #[derive(Deserialize, Serialize)]
@@ -437,7 +439,62 @@ mod test {
             },
         ]);
 
-        let expected = json!([{"name":"english","rule":{"any_in":{"list":{"constant":["en","en-US","en-GB"]},"values":{"http_quality_value":{"attribute":"accept-language"}}}}},{"name":"other-english","rule":{"or":[{"in":{"list":{"http_quality_value":{"attribute":"accept-language"}},"value":{"constant":"en"}}},{"in":{"list":{"http_quality_value":{"attribute":"accept-language"}},"value":{"constant":"en-US"}}},{"in":{"list":{"http_quality_value":{"attribute":"accept-language"}},"value":{"constant":"en-GB"}}}]}},{"name":"british","rule":{"in":{"list":{"http_quality_value":{"attribute":"accept-language"}},"value":{"constant":"en-GB"}}}}]).to_string();
+        let expected = json!([
+            {
+                "name":"english",
+                "rule": {
+                    "any_in": {
+                        "list": { "constant": ["en","en-US","en-GB"] },
+                        "values": {
+                            "http_quality_value": { "attribute":"accept-language" }
+                        }
+                    }
+                }
+            },
+            {
+                "name":"other-english",
+                "rule": {
+                    "or": [
+                        {
+                            "in": {
+                                "list": {
+                                    "http_quality_value": { "attribute":"accept-language" }
+                                },
+                                "value": { "constant": "en" }
+                            }
+                        },
+                        {
+                            "in": {
+                                "list": {
+                                    "http_quality_value": { "attribute":"accept-language" }
+                                },
+                                "value": { "constant": "en-US" }
+                            }
+                        },
+                        {
+                            "in": {
+                                "list": {
+                                    "http_quality_value": { "attribute":"accept-language" }
+                                },
+                                "value": { "constant": "en-GB" }
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "name":"british",
+                "rule": {
+                    "in": {
+                        "list": {
+                            "http_quality_value": { "attribute":"accept-language" }
+                        },
+                        "value": { "constant": "en-GB" }
+                    }
+                }
+            }
+        ])
+        .to_string();
         let actual = serde_json::to_string(&config).unwrap();
 
         assert_eq_diff!(actual, expected);
