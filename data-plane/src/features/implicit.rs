@@ -4,6 +4,7 @@ use std::{
     collections::{hash_map::DefaultHasher, HashMap, HashSet},
     hash::{Hash, Hasher},
 };
+use woothee::parser::{Parser as UserAgentParser, WootheeResult};
 
 /// A set of features and their matching rules
 #[derive(Deserialize, Serialize)]
@@ -168,6 +169,7 @@ pub enum StringExpr {
     Constant(String),
     Attribute(String), // Request attribute value
     Browser,           // Derives browser from User-Agent
+    BrowserVersion,    // Derives bowser version from User-Agent
     OperatingSystem,   // Derives operating system from User-Agent
     // Extracts a string value from a JSON encoded StringExpr
     JsonPointer {
@@ -187,8 +189,9 @@ impl StringExpr {
                 .map_or(Err(format!("Attribute '{}' not found.", name)), |s| {
                     Ok((*s).to_string())
                 }),
-            StringExpr::Browser => todo!(),
-            StringExpr::OperatingSystem => todo!(),
+            StringExpr::Browser => map_user_agent(request, |ua| ua.name.into()),
+            StringExpr::BrowserVersion => map_user_agent(request, |ua| ua.version.into()),
+            StringExpr::OperatingSystem => map_user_agent(request, |ua| ua.os.into()),
             StringExpr::JsonPointer { pointer, value } => value.eval(request).and_then(|json| {
                 json_pointer(pointer, json, "string", |v| {
                     v.as_str().map(|s| s.to_string())
@@ -202,6 +205,22 @@ impl StringExpr {
                 .and_then(|v| v.last().cloned().ok_or_else(|| "List is empty.".into())),
         }
     }
+}
+
+fn map_user_agent<V, F: FnOnce(WootheeResult) -> V>(
+    request: &HashMap<&str, &str>,
+    map: F,
+) -> Result<V, String> {
+    request
+        .get("user-agent")
+        .map_or(Err("User-Agent header not found".into()), |ua| {
+            UserAgentParser::new()
+                .parse(ua)
+                .map(map)
+                .map_or(Err(format!("Malformed User-Agent string: {}", ua)), |it| {
+                    Ok(it)
+                })
+        })
 }
 
 #[derive(Deserialize, Serialize)]
@@ -309,10 +328,22 @@ mod test {
     #[test_case(StringExpr::Last(Box::new(StringListExpr::Constant(vec!["a".into(), "b".into(), "c".into()]))), Ok("c".into()))]
     #[test_case(StringExpr::First(Box::new(StringListExpr::Constant(vec![]))), Err("List is empty.".into()))]
     #[test_case(StringExpr::Last(Box::new(StringListExpr::Constant(vec![]))), Err("List is empty.".into()))]
+    #[test_case(StringExpr::Browser, Ok("Chrome".into()))]
+    #[test_case(StringExpr::BrowserVersion, Ok("83.0.4103.61".into()))]
+    #[test_case(StringExpr::OperatingSystem, Ok("Mac OSX".into()))]
     #[test_case(StringExpr::JsonPointer { pointer: "/foo/0".into(), value: Box::new(StringExpr::Constant(r#"{"foo":["bar"]}"#.into())) }, Ok("bar".into()))]
     #[test_case(StringExpr::JsonPointer { pointer: "/foo/0".into(), value: Box::new(StringExpr::Constant(r#"{"foo":[0.3]}"#.into())) }, Err("Cannot find a string at pointer /foo/0 in JSON {\"foo\":[0.3]}".into()))]
     fn evaluate_string_expressions(expr: StringExpr, expected: Result<String, String>) {
-        let request = [("hello", "world")].iter().cloned().collect();
+        let request = [
+            ("hello", "world"),
+            (
+                "user-agent",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36",
+            ),
+        ]
+        .iter()
+        .cloned()
+        .collect();
 
         assert_eq!(expr.eval(&request), expected)
     }
