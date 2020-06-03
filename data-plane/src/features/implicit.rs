@@ -199,10 +199,10 @@ impl StringExpr {
             } => todo!(),
             StringExpr::First(list) => list
                 .eval(request)
-                .and_then(|v| v.first().cloned().ok_or_else(|| "List is empty.".into())),
+                .and_then(|v| v.first().cloned().ok_or("List is empty.".into())),
             StringExpr::Last(list) => list
                 .eval(request)
-                .and_then(|v| v.last().cloned().ok_or_else(|| "List is empty.".into())),
+                .and_then(|v| v.last().cloned().ok_or("List is empty.".into())),
         }
     }
 }
