@@ -1,3 +1,4 @@
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::DefaultHasher, HashMap, HashSet},
@@ -90,11 +91,12 @@ impl BoolExpr {
                     a.intersection(&b).count() == a.len()
                 })
             }),
-            BoolExpr::JsonPointer {
-                pointer: _,
-                value: _,
-            } => todo!(),
-            BoolExpr::Matches(_regex, _value) => todo!(),
+            BoolExpr::JsonPointer { .. } => todo!(),
+            BoolExpr::Matches(regex, value) => value.eval(request).and_then(|v| {
+                Regex::new(regex)
+                    .map(|r| r.is_match(v.as_ref()))
+                    .map_err(|e| format!("{}", e))
+            }),
             BoolExpr::StrEq(_left, _right) => todo!(),
             BoolExpr::NumEq(_left, _right) => todo!(),
             BoolExpr::Gt(_left, _right) => todo!(),
@@ -302,6 +304,8 @@ mod test {
     #[test_case(BoolExpr::AllIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["a".into(), "c".into()]) }, Ok(false); "list doesn't contain all values")]
     #[test_case(BoolExpr::AnyIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["a".into(), "c".into()]) }, Ok(true); "list contains any of the values")]
     #[test_case(BoolExpr::AnyIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["c".into(), "d".into()]) }, Ok(false); "list doesn't contain any of the values")]
+    #[test_case(BoolExpr::Matches(r#"\+440?[0-9]{10}"#.into(), StringExpr::Constant("+4407945123456".into())), Ok(true))]
+    #[test_case(BoolExpr::Matches(r#"\+440?[0-9]{10}"#.into(), StringExpr::Constant("+47945123456".into())), Ok(false))]
     #[test_case(BoolExpr::Not(Box::new(BoolExpr::Constant(true))), Ok(false))]
     #[test_case(BoolExpr::And(vec![BoolExpr::Constant(true), BoolExpr::Constant(true)]), Ok(true))]
     #[test_case(BoolExpr::And(vec![BoolExpr::Constant(true), BoolExpr::Constant(false)]), Ok(false))]
