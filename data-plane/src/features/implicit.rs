@@ -97,12 +97,26 @@ impl BoolExpr {
                     .map(|r| r.is_match(v.as_ref()))
                     .map_err(|e| format!("{}", e))
             }),
-            BoolExpr::StrEq(_left, _right) => todo!(),
-            BoolExpr::NumEq(_left, _right) => todo!(),
-            BoolExpr::Gt(_left, _right) => todo!(),
-            BoolExpr::Lt(_left, _right) => todo!(),
-            BoolExpr::Gte(_left, _right) => todo!(),
-            BoolExpr::Lte(_left, _right) => todo!(),
+            BoolExpr::StrEq(left, right) => left
+                .eval(request)
+                .and_then(|l| right.eval(request).map(|r| l == r)),
+            BoolExpr::NumEq(left, right) => left.eval(request).and_then(|l| {
+                right
+                    .eval(request)
+                    .map(|r| (l - r).abs() < std::f64::EPSILON)
+            }),
+            BoolExpr::Gt(left, right) => left
+                .eval(request)
+                .and_then(|l| right.eval(request).map(|r| l > r)),
+            BoolExpr::Lt(left, right) => left
+                .eval(request)
+                .and_then(|l| right.eval(request).map(|r| l < r)),
+            BoolExpr::Gte(left, right) => left
+                .eval(request)
+                .and_then(|l| right.eval(request).map(|r| l >= r)),
+            BoolExpr::Lte(left, right) => left
+                .eval(request)
+                .and_then(|l| right.eval(request).map(|r| l <= r)),
             BoolExpr::Not(value) => value.eval(request).map(|v| !v),
             BoolExpr::And(values) => values
                 .iter()
@@ -308,6 +322,58 @@ mod test {
     #[test_case(BoolExpr::AnyIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["c".into(), "d".into()]) }, Ok(false); "list doesn't contain any of the values")]
     #[test_case(BoolExpr::Matches(r#"\+440?[0-9]{10}"#.into(), StringExpr::Constant("+4407945123456".into())), Ok(true))]
     #[test_case(BoolExpr::Matches(r#"\+440?[0-9]{10}"#.into(), StringExpr::Constant("+47945123456".into())), Ok(false))]
+    #[test_case(BoolExpr::StrEq(StringExpr::Constant("foo".into()), StringExpr::Constant("foo".into())), Ok(true))]
+    #[test_case(BoolExpr::StrEq(StringExpr::Constant("foo".into()), StringExpr::Constant("bar".into())), Ok(false))]
+    #[test_case(
+        BoolExpr::NumEq(NumExpr::Constant(1.3), NumExpr::Constant(1.3)),
+        Ok(true)
+    )]
+    #[test_case(
+        BoolExpr::NumEq(NumExpr::Constant(1.0), NumExpr::Constant(1.3)),
+        Ok(false)
+    )]
+    #[test_case(BoolExpr::Gt(NumExpr::Constant(1.3), NumExpr::Constant(1.2)), Ok(true))]
+    #[test_case(
+        BoolExpr::Gt(NumExpr::Constant(1.2), NumExpr::Constant(1.3)),
+        Ok(false)
+    )]
+    #[test_case(
+        BoolExpr::Gt(NumExpr::Constant(1.3), NumExpr::Constant(1.3)),
+        Ok(false)
+    )]
+    #[test_case(
+        BoolExpr::Gte(NumExpr::Constant(1.3), NumExpr::Constant(1.2)),
+        Ok(true)
+    )]
+    #[test_case(
+        BoolExpr::Gte(NumExpr::Constant(1.2), NumExpr::Constant(1.3)),
+        Ok(false)
+    )]
+    #[test_case(
+        BoolExpr::Gte(NumExpr::Constant(1.3), NumExpr::Constant(1.3)),
+        Ok(true)
+    )]
+    #[test_case(
+        BoolExpr::Lt(NumExpr::Constant(1.3), NumExpr::Constant(1.2)),
+        Ok(false)
+    )]
+    #[test_case(BoolExpr::Lt(NumExpr::Constant(1.2), NumExpr::Constant(1.3)), Ok(true))]
+    #[test_case(
+        BoolExpr::Lt(NumExpr::Constant(1.3), NumExpr::Constant(1.3)),
+        Ok(false)
+    )]
+    #[test_case(
+        BoolExpr::Lte(NumExpr::Constant(1.3), NumExpr::Constant(1.2)),
+        Ok(false)
+    )]
+    #[test_case(
+        BoolExpr::Lte(NumExpr::Constant(1.2), NumExpr::Constant(1.3)),
+        Ok(true)
+    )]
+    #[test_case(
+        BoolExpr::Lte(NumExpr::Constant(1.3), NumExpr::Constant(1.3)),
+        Ok(true)
+    )]
     #[test_case(BoolExpr::Not(Box::new(BoolExpr::Constant(true))), Ok(false))]
     #[test_case(BoolExpr::And(vec![BoolExpr::Constant(true), BoolExpr::Constant(true)]), Ok(true))]
     #[test_case(BoolExpr::And(vec![BoolExpr::Constant(true), BoolExpr::Constant(false)]), Ok(false))]
