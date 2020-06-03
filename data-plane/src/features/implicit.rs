@@ -87,7 +87,7 @@ impl BoolExpr {
                     let a: HashSet<_> = haystack.iter().collect();
                     let b: HashSet<_> = needles.iter().collect();
 
-                    a.intersection(&b).collect::<Vec<_>>().len() == a.len()
+                    a.intersection(&b).count() == a.len()
                 })
             }),
             BoolExpr::JsonPointer {
@@ -106,12 +106,12 @@ impl BoolExpr {
                 .iter()
                 .map(|v| v.eval(request))
                 .collect::<Result<Vec<_>, _>>()
-                .map(|it| it.iter().all(|v| *v == true)),
+                .map(|it| it.iter().all(|v| *v)),
             BoolExpr::Or(values) => values
                 .iter()
                 .map(|v| v.eval(request))
                 .collect::<Result<Vec<_>, _>>()
-                .map(|it| it.iter().any(|v| *v == true)),
+                .map(|it| it.iter().any(|v| *v)),
         }
     }
 }
@@ -199,10 +199,10 @@ impl StringExpr {
             } => todo!(),
             StringExpr::First(list) => list
                 .eval(request)
-                .and_then(|v| v.first().cloned().ok_or("List is empty.".into())),
+                .and_then(|v| v.first().cloned().ok_or_else(|| "List is empty.".into())),
             StringExpr::Last(list) => list
                 .eval(request)
-                .and_then(|v| v.last().cloned().ok_or("List is empty.".into())),
+                .and_then(|v| v.last().cloned().ok_or_else(|| "List is empty.".into())),
         }
     }
 }
