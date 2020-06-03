@@ -1,3 +1,4 @@
+use base64::decode as base64decode;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -167,10 +168,11 @@ impl StringListExpr {
 #[serde(rename_all = "snake_case")]
 pub enum StringExpr {
     Constant(String),
-    Attribute(String), // Request attribute value
-    Browser,           // Derives browser from User-Agent
-    BrowserVersion,    // Derives bowser version from User-Agent
-    OperatingSystem,   // Derives operating system from User-Agent
+    Attribute(String),       // Request attribute value
+    Base64(Box<StringExpr>), // Base 64 decode value
+    Browser,                 // Derives browser from User-Agent
+    BrowserVersion,          // Derives bowser version from User-Agent
+    OperatingSystem,         // Derives operating system from User-Agent
     // Extracts a string value from a JSON encoded StringExpr
     JsonPointer {
         pointer: String,
@@ -189,6 +191,15 @@ impl StringExpr {
                 .map_or(Err(format!("Attribute '{}' not found.", name)), |s| {
                     Ok((*s).to_string())
                 }),
+            StringExpr::Base64(value) => value.eval(request).and_then(|v| {
+                base64decode(v)
+                    .map_err(|e| format!("{}", e))
+                    .and_then(|it| {
+                        std::str::from_utf8(&it[..])
+                            .map(|it| it.into())
+                            .map_err(|e| format!("{}", e))
+                    })
+            }),
             StringExpr::Browser => map_user_agent(request, |ua| ua.name.into()),
             StringExpr::BrowserVersion => map_user_agent(request, |ua| ua.version.into()),
             StringExpr::OperatingSystem => map_user_agent(request, |ua| ua.os.into()),
@@ -324,6 +335,7 @@ mod test {
 
     #[test_case(StringExpr::Constant("hello".into()), Ok("hello".into()))]
     #[test_case(StringExpr::Attribute("hello".into()), Ok("world".into()))]
+    #[test_case(StringExpr::Base64(Box::new(StringExpr::Constant("aGVsbG8=".into()))), Ok("hello".into()))]
     #[test_case(StringExpr::First(Box::new(StringListExpr::Constant(vec!["a".into(), "b".into(), "c".into()]))), Ok("a".into()))]
     #[test_case(StringExpr::Last(Box::new(StringListExpr::Constant(vec!["a".into(), "b".into(), "c".into()]))), Ok("c".into()))]
     #[test_case(StringExpr::First(Box::new(StringListExpr::Constant(vec![]))), Err("List is empty.".into()))]
