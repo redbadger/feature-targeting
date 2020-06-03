@@ -91,7 +91,9 @@ impl BoolExpr {
                     a.intersection(&b).count() == a.len()
                 })
             }),
-            BoolExpr::JsonPointer { .. } => todo!(),
+            BoolExpr::JsonPointer { pointer, value } => value
+                .eval(request)
+                .and_then(|json| json_pointer(pointer, json, "boolean", |v| v.as_bool())),
             BoolExpr::Matches(regex, value) => value.eval(request).and_then(|v| {
                 Regex::new(regex)
                     .map(|r| r.is_match(v.as_ref()))
@@ -160,30 +162,6 @@ impl StringListExpr {
     }
 }
 
-// Parse a HTTP q-value of the form '*/*;q=0.3, text/plain;q=0.7, text/html, text/*;q=0.5'
-fn parse_q_value(value: String) -> Vec<String> {
-    let mut list: Vec<(&str, f32)> = value
-        .split(',')
-        .map(|q_val| {
-            let mut parts = q_val.split(";q=").map(|it| it.trim());
-            let v = parts.next().unwrap();
-            let q = parts
-                .next()
-                .and_then(|q| q.parse::<f32>().ok())
-                .or(Some(1.0))
-                .unwrap();
-
-            (v, q)
-        })
-        .collect();
-
-    list.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-
-    list.iter()
-        .map(|(v, _)| (*v).to_string())
-        .collect::<Vec<_>>()
-}
-
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StringExpr {
@@ -211,10 +189,11 @@ impl StringExpr {
                 }),
             StringExpr::Browser => todo!(),
             StringExpr::OperatingSystem => todo!(),
-            StringExpr::JsonPointer {
-                pointer: _pointer,
-                value: _value,
-            } => todo!(),
+            StringExpr::JsonPointer { pointer, value } => value.eval(request).and_then(|json| {
+                json_pointer(pointer, json, "string", |v| {
+                    v.as_str().map(|s| s.to_string())
+                })
+            }),
             StringExpr::First(list) => list
                 .eval(request)
                 .and_then(|v| v.first().cloned().ok_or_else(|| "List is empty.".into())),
@@ -225,7 +204,6 @@ impl StringExpr {
     }
 }
 
-// Numerical value extractors
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NumExpr {
@@ -252,12 +230,54 @@ impl NumExpr {
                 s.hash(&mut hasher);
                 (hasher.finish() % 1000) as f64 / 10.0
             }),
-            NumExpr::JsonPointer {
-                pointer: _pointer,
-                value: _value,
-            } => todo!(),
+            NumExpr::JsonPointer { pointer, value } => value
+                .eval(request)
+                .and_then(|json| json_pointer(pointer, json, "number", |v| v.as_f64())),
         }
     }
+}
+
+// Helpers
+
+// Parse a HTTP q-value of the form '*/*;q=0.3, text/plain;q=0.7, text/html, text/*;q=0.5'
+fn parse_q_value(value: String) -> Vec<String> {
+    let mut list: Vec<(&str, f32)> = value
+        .split(',')
+        .map(|q_val| {
+            let mut parts = q_val.split(";q=").map(|it| it.trim());
+            let v = parts.next().unwrap();
+            let q = parts
+                .next()
+                .and_then(|q| q.parse::<f32>().ok())
+                .or(Some(1.0))
+                .unwrap();
+
+            (v, q)
+        })
+        .collect();
+
+    list.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+    list.iter()
+        .map(|(v, _)| (*v).to_string())
+        .collect::<Vec<_>>()
+}
+
+// Extract a value out of JSON using a JSON pointer. Useful for JWT tokens for example
+fn json_pointer<T, F>(pointer: &str, json: String, typename: &str, cast: F) -> Result<T, String>
+where
+    F: FnOnce(&serde_json::Value) -> Option<T>,
+{
+    serde_json::from_str(json.as_ref())
+        .map_err(|e| format!("{}", e))
+        .and_then(|v: serde_json::Value| {
+            v.pointer(pointer).and_then(cast).ok_or_else(|| {
+                format!(
+                    "Cannot find a {} at pointer {} in JSON {}",
+                    typename, pointer, v
+                )
+            })
+        })
 }
 
 #[cfg(test)]
@@ -272,6 +292,8 @@ mod test {
     #[test_case(NumExpr::Attribute("nope".into()), Err("Attribute 'nope' not found.".into()))]
     #[test_case(NumExpr::Attribute("not-number".into()), Err("Cannot parse 'hi' as number.".into()))]
     #[test_case(NumExpr::Rank(StringExpr::Attribute("not-number".into())), Ok(40.9))]
+    #[test_case(NumExpr::JsonPointer { pointer: "/foo/0".into(), value: StringExpr::Constant(r#"{"foo":[0.3]}"#.into()) }, Ok(0.3))]
+    #[test_case(NumExpr::JsonPointer { pointer: "/bar/0".into(), value: StringExpr::Constant(r#"{"foo":[0.3]}"#.into()) }, Err("Cannot find a number at pointer /bar/0 in JSON {\"foo\":[0.3]}".into()))]
     fn evaluate_numerical_expressions(expr: NumExpr, expected: Result<f64, String>) {
         let request = [("number", "1.4"), ("not-number", "hi")]
             .iter()
@@ -287,6 +309,8 @@ mod test {
     #[test_case(StringExpr::Last(Box::new(StringListExpr::Constant(vec!["a".into(), "b".into(), "c".into()]))), Ok("c".into()))]
     #[test_case(StringExpr::First(Box::new(StringListExpr::Constant(vec![]))), Err("List is empty.".into()))]
     #[test_case(StringExpr::Last(Box::new(StringListExpr::Constant(vec![]))), Err("List is empty.".into()))]
+    #[test_case(StringExpr::JsonPointer { pointer: "/foo/0".into(), value: Box::new(StringExpr::Constant(r#"{"foo":["bar"]}"#.into())) }, Ok("bar".into()))]
+    #[test_case(StringExpr::JsonPointer { pointer: "/foo/0".into(), value: Box::new(StringExpr::Constant(r#"{"foo":[0.3]}"#.into())) }, Err("Cannot find a string at pointer /foo/0 in JSON {\"foo\":[0.3]}".into()))]
     fn evaluate_string_expressions(expr: StringExpr, expected: Result<String, String>) {
         let request = [("hello", "world")].iter().cloned().collect();
 
@@ -320,6 +344,8 @@ mod test {
     #[test_case(BoolExpr::AllIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["a".into(), "c".into()]) }, Ok(false); "list doesn't contain all values")]
     #[test_case(BoolExpr::AnyIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["a".into(), "c".into()]) }, Ok(true); "list contains any of the values")]
     #[test_case(BoolExpr::AnyIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["c".into(), "d".into()]) }, Ok(false); "list doesn't contain any of the values")]
+    #[test_case(BoolExpr::JsonPointer { pointer: "/foo/0".into(), value: StringExpr::Constant(r#"{"foo":[true]}"#.into()) }, Ok(true))]
+    #[test_case(BoolExpr::JsonPointer { pointer: "/foo/0".into(), value: StringExpr::Constant(r#"{"foo":[0.3]}"#.into()) }, Err("Cannot find a boolean at pointer /foo/0 in JSON {\"foo\":[0.3]}".into()))]
     #[test_case(BoolExpr::Matches(r#"\+440?[0-9]{10}"#.into(), StringExpr::Constant("+4407945123456".into())), Ok(true))]
     #[test_case(BoolExpr::Matches(r#"\+440?[0-9]{10}"#.into(), StringExpr::Constant("+47945123456".into())), Ok(false))]
     #[test_case(BoolExpr::StrEq(StringExpr::Constant("foo".into()), StringExpr::Constant("foo".into())), Ok(true))]
