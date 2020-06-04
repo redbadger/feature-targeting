@@ -32,36 +32,56 @@ pub fn from_request<'a>(request: HashMap<&str, &str>, config: &'a Config) -> Vec
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BoolExpr {
+    /// The identity expression
     Constant(bool),
-    Attribute(String), // Request attribute of name is present
-    // Value contained in the list
+    /// Request attribute of name is present
+    Attribute(String),
+    /// Value contained in the list
     In {
         list: StringListExpr,
         value: StringExpr,
     },
-    // Any of the values contained in the list
+    /// Any of the values contained in the list
     AnyIn {
         list: StringListExpr,
         values: StringListExpr,
     },
-    // All of the values contained in the list
+    /// All of the values contained in the list
     AllIn {
         list: StringListExpr,
         values: StringListExpr,
     },
-    JsonPointer {
-        pointer: String,
-        value: StringExpr,
-    },
-    Matches(String, StringExpr),   // Matches regex
-    StrEq(StringExpr, StringExpr), // == for strings
-    NumEq(NumExpr, NumExpr),       // == for numbers
-    Gt(NumExpr, NumExpr),          // >
-    Lt(NumExpr, NumExpr),          // <
-    Gte(NumExpr, NumExpr),         // >=
-    Lte(NumExpr, NumExpr),         // <=
+    /// Looks up a boolean value by a JSON Pointer
+    ///
+    /// JSON Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (JSON) document.
+    ///
+    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
+    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
+    /// addressed value is returned and if there is no such value `None` is
+    /// returned.
+    ///
+    /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
+    JsonPointer { pointer: String, value: StringExpr },
+    /// Matches a Regular Expression
+    Matches(String, StringExpr),
+    /// == for strings
+    StrEq(StringExpr, StringExpr),
+    /// == for numbers
+    NumEq(NumExpr, NumExpr),
+    /// > for numbers
+    Gt(NumExpr, NumExpr),
+    /// < for numbers
+    Lt(NumExpr, NumExpr),
+    /// >= for numbers
+    Gte(NumExpr, NumExpr),
+    /// <= for numbers
+    Lte(NumExpr, NumExpr),
+    /// Logical NOT
     Not(Box<BoolExpr>),
+    /// Logical AND
     And(Vec<BoolExpr>),
+    /// Logical OR
     Or(Vec<BoolExpr>),
 }
 
@@ -139,14 +159,15 @@ impl BoolExpr {
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StringListExpr {
+    /// The identity expression
     Constant(Vec<String>),
+    /// Split a string value using a separator
     Split {
-        // Split a string value using a separator
         separator: String,
         value: StringExpr,
     },
-    // Parse a HTTP header with q-values,
-    // i.e. Accept, Accept-Charset, Accept-Language, Accept-Encoding
+    /// Parse a HTTP header with q-values,
+    /// i.e. Accept, Accept-Charset, Accept-Language, Accept-Encoding
     HttpQualityValue(StringExpr),
 }
 
@@ -167,19 +188,37 @@ impl StringListExpr {
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StringExpr {
+    /// The identity expression
     Constant(String),
-    Attribute(String),       // Request attribute value
-    Base64(Box<StringExpr>), // Base 64 decode value
-    Browser,                 // Derives browser from User-Agent
-    BrowserVersion,          // Derives bowser version from User-Agent
-    OperatingSystem,         // Derives operating system from User-Agent
-    // Extracts a string value from a JSON encoded StringExpr
+    /// Request attribute value
+    Attribute(String),
+    /// Base 64 decode value
+    Base64(Box<StringExpr>),
+    /// Derives browser from User-Agent
+    Browser,
+    /// Derives bowser version from User-Agent
+    BrowserVersion,
+    /// Derives operating system from User-Agent
+    OperatingSystem,
+    /// Looks up a string value by a JSON Pointer
+    ///
+    /// JSON Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (JSON) document.
+    ///
+    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
+    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
+    /// addressed value is returned and if there is no such value `None` is
+    /// returned.
+    ///
+    /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
     JsonPointer {
         pointer: String,
         value: Box<StringExpr>,
     },
-    First(Box<StringListExpr>), // First item of a list
-    Last(Box<StringListExpr>),  // Last item of a list
+    /// First item of a list
+    First(Box<StringListExpr>),
+    /// Last item of a list
+    Last(Box<StringListExpr>),
 }
 
 impl StringExpr {
@@ -237,10 +276,23 @@ fn map_user_agent<V, F: FnOnce(WootheeResult) -> V>(
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NumExpr {
+    /// The identity expression
     Constant(f64),
-    Attribute(String), // Request attribute value
-    // Randomly assigns a uniformly distributed stable number between 0.0 and 100.0
+    /// Request attribute value
+    Attribute(String),
+    /// Randomly assigns a uniformly distributed stable number between 0.0 and 100.0
     Rank(StringExpr),
+    /// Looks up a number value by a JSON Pointer
+    ///
+    /// JSON Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (JSON) document.
+    ///
+    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
+    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
+    /// addressed value is returned and if there is no such value `None` is
+    /// returned.
+    ///
+    /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
     JsonPointer { pointer: String, value: StringExpr },
 }
 
@@ -269,7 +321,7 @@ impl NumExpr {
 
 // Helpers
 
-// Parse a HTTP q-value of the form '*/*;q=0.3, text/plain;q=0.7, text/html, text/*;q=0.5'
+/// Parse a HTTP q-value of the form '*/*;q=0.3, text/plain;q=0.7, text/html, text/*;q=0.5'
 fn parse_q_value(value: String) -> Vec<String> {
     let mut list: Vec<(&str, f32)> = value
         .split(',')
