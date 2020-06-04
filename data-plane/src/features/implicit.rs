@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use base64::decode as base64decode;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -86,13 +87,16 @@ pub enum BoolExpr {
 }
 
 impl BoolExpr {
-    fn eval(&self, request: &HashMap<&str, &str>) -> Result<bool, String> {
+    fn eval(&self, request: &HashMap<&str, &str>) -> Result<bool> {
         match &self {
             BoolExpr::Constant(c) => Ok(*c),
-            BoolExpr::Attribute(name) => request.get::<str>(name.as_ref()).map_or_else(
-                || Err(format!("Attribute '{}' not found.", name)),
-                |_| Ok(true),
-            ),
+            BoolExpr::Attribute(name) => {
+                if request.get::<str>(name.as_ref()).is_some() {
+                    Ok(true)
+                } else {
+                    Err(anyhow!("Attribute '{}' not found.", name))
+                }
+            }
             BoolExpr::In { list, value } => list
                 .eval(request)
                 .and_then(|haystack| value.eval(request).map(|needle| haystack.contains(&needle))),
@@ -114,32 +118,42 @@ impl BoolExpr {
             }),
             BoolExpr::JsonPointer { pointer, value } => value
                 .eval(request)
-                .and_then(|json| json_pointer(pointer, json, "boolean", |v| v.as_bool())),
-            BoolExpr::Matches(regex, value) => value.eval(request).and_then(|v| {
-                Regex::new(regex)
-                    .map(|r| r.is_match(v.as_ref()))
-                    .map_err(|e| format!("{}", e))
-            }),
-            BoolExpr::StrEq(left, right) => left
-                .eval(request)
-                .and_then(|l| right.eval(request).map(|r| l == r)),
-            BoolExpr::NumEq(left, right) => left.eval(request).and_then(|l| {
-                right
-                    .eval(request)
-                    .map(|r| (l - r).abs() < std::f64::EPSILON)
-            }),
-            BoolExpr::Gt(left, right) => left
-                .eval(request)
-                .and_then(|l| right.eval(request).map(|r| l > r)),
-            BoolExpr::Lt(left, right) => left
-                .eval(request)
-                .and_then(|l| right.eval(request).map(|r| l < r)),
-            BoolExpr::Gte(left, right) => left
-                .eval(request)
-                .and_then(|l| right.eval(request).map(|r| l >= r)),
-            BoolExpr::Lte(left, right) => left
-                .eval(request)
-                .and_then(|l| right.eval(request).map(|r| l <= r)),
+                .and_then(|json| json_pointer(pointer, json.as_str(), "boolean", |v| v.as_bool())),
+            BoolExpr::Matches(regex, value) => {
+                let v = value.eval(request)?;
+                let r = Regex::new(regex)?;
+                Ok(r.is_match(v.as_ref()))
+            }
+            BoolExpr::StrEq(left, right) => {
+                let l = left.eval(request)?;
+                let r = right.eval(request)?;
+                Ok(l == r)
+            }
+            BoolExpr::NumEq(left, right) => {
+                let l = left.eval(request)?;
+                let r = right.eval(request)?;
+                Ok((l - r).abs() < std::f64::EPSILON)
+            }
+            BoolExpr::Gt(left, right) => {
+                let l = left.eval(request)?;
+                let r = right.eval(request)?;
+                Ok(l > r)
+            }
+            BoolExpr::Lt(left, right) => {
+                let l = left.eval(request)?;
+                let r = right.eval(request)?;
+                Ok(l < r)
+            }
+            BoolExpr::Gte(left, right) => {
+                let l = left.eval(request)?;
+                let r = right.eval(request)?;
+                Ok(l >= r)
+            }
+            BoolExpr::Lte(left, right) => {
+                let l = left.eval(request)?;
+                let r = right.eval(request)?;
+                Ok(l <= r)
+            }
             BoolExpr::Not(value) => value.eval(request).map(|v| !v),
             BoolExpr::And(values) => values
                 .iter()
@@ -171,15 +185,17 @@ pub enum StringListExpr {
 }
 
 impl StringListExpr {
-    fn eval(&self, request: &HashMap<&str, &str>) -> Result<Vec<String>, String> {
+    fn eval(&self, request: &HashMap<&str, &str>) -> Result<Vec<String>> {
         match &self {
             StringListExpr::Constant(c) => Ok(c.clone()),
-            StringListExpr::Split { separator, value } => value.eval(request).map(|s| {
-                s.split(separator)
-                    .map(|item| item.to_string())
-                    .collect::<Vec<_>>()
-            }),
-            StringListExpr::HttpQualityValue(value) => value.eval(request).map(parse_q_value),
+            StringListExpr::Split { separator, value } => {
+                let s = value.eval(request)?;
+                Ok(s.split(separator).map(|item| item.to_string()).collect())
+            }
+            StringListExpr::HttpQualityValue(value) => {
+                let s = value.eval(request)?;
+                Ok(parse_q_value(s.as_str()))
+            }
         }
     }
 }
@@ -221,36 +237,43 @@ pub enum StringExpr {
 }
 
 impl StringExpr {
-    fn eval(&self, request: &HashMap<&str, &str>) -> Result<String, String> {
+    fn eval(&self, request: &HashMap<&str, &str>) -> Result<String> {
         match &self {
             StringExpr::Constant(c) => Ok(c.clone()),
             StringExpr::Attribute(name) => request.get::<str>(name.as_ref()).map_or_else(
-                || Err(format!("Attribute '{}' not found.", name)),
+                || Err(anyhow!("Attribute '{}' not found.", name)),
                 |s| Ok((*s).to_string()),
             ),
-            StringExpr::Base64(value) => value.eval(request).and_then(|v| {
-                base64decode(v)
-                    .map_err(|e| format!("{}", e))
-                    .and_then(|it| {
-                        std::str::from_utf8(&it[..])
-                            .map(Into::into)
-                            .map_err(|e| format!("{}", e))
-                    })
-            }),
+            StringExpr::Base64(value) => {
+                let s = value.eval(request)?;
+                let bytes = base64decode(s)?;
+                Ok(String::from_utf8(bytes)?)
+            }
             StringExpr::Browser => map_user_agent(request, |ua| ua.name.into()),
             StringExpr::BrowserVersion => map_user_agent(request, |ua| ua.version.into()),
             StringExpr::OperatingSystem => map_user_agent(request, |ua| ua.os.into()),
-            StringExpr::JsonPointer { pointer, value } => value.eval(request).and_then(|json| {
-                json_pointer(pointer, json, "string", |v| {
+            StringExpr::JsonPointer { pointer, value } => {
+                let json = value.eval(request)?;
+                json_pointer(pointer, json.as_str(), "string", |v| {
                     v.as_str().map(|s| s.to_string())
                 })
-            }),
-            StringExpr::First(list) => list
-                .eval(request)
-                .and_then(|v| v.first().cloned().ok_or_else(|| "List is empty.".into())),
-            StringExpr::Last(list) => list
-                .eval(request)
-                .and_then(|v| v.last().cloned().ok_or_else(|| "List is empty.".into())),
+            }
+            StringExpr::First(list) => {
+                let v = list.eval(request)?;
+                if let Some(s) = v.first() {
+                    Ok(s.clone())
+                } else {
+                    Err(anyhow!("List is empty."))
+                }
+            }
+            StringExpr::Last(list) => {
+                let v = list.eval(request)?;
+                if let Some(s) = v.last() {
+                    Ok(s.clone())
+                } else {
+                    Err(anyhow!("List is empty."))
+                }
+            }
         }
     }
 }
@@ -258,16 +281,16 @@ impl StringExpr {
 fn map_user_agent<V, F: FnOnce(WootheeResult) -> V>(
     request: &HashMap<&str, &str>,
     map: F,
-) -> Result<V, String> {
-    request.get("user-agent").map_or_else(
-        || Err("User-Agent header not found".into()),
-        |ua| {
-            UserAgentParser::new()
-                .parse(ua)
-                .map(map)
-                .map_or_else(|| Err(format!("Malformed User-Agent string: {}", ua)), Ok)
-        },
-    )
+) -> Result<V> {
+    if let Some(ua) = request.get("user-agent") {
+        if let Some(ua) = UserAgentParser::new().parse(ua) {
+            Ok(map(ua))
+        } else {
+            Err(anyhow!("Malformed User-Agent string: {}", ua))
+        }
+    } else {
+        Err(anyhow!("User-Agent header not found"))
+    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -294,16 +317,15 @@ pub enum NumExpr {
 }
 
 impl NumExpr {
-    fn eval(&self, request: &HashMap<&str, &str>) -> Result<f64, String> {
+    fn eval(&self, request: &HashMap<&str, &str>) -> Result<f64> {
         match &self {
             NumExpr::Constant(c) => Ok(*c),
-            NumExpr::Attribute(name) => request.get::<str>(name.as_ref()).map_or_else(
-                || Err(format!("Attribute '{}' not found.", name)),
-                |s| {
-                    (*s).parse()
-                        .map_err(|_| format!("Cannot parse '{}' as number.", s))
-                },
-            ),
+            NumExpr::Attribute(name) => {
+                if let Some(s) = request.get::<str>(name.as_ref()) {
+                    return Ok((*s).parse::<f64>()?);
+                }
+                Err(anyhow!("Attribute '{}' not found.", name))
+            }
             NumExpr::Rank(str_exp) => str_exp.eval(request).map(|s| {
                 let mut hasher = DefaultHasher::new();
                 s.hash(&mut hasher);
@@ -311,7 +333,7 @@ impl NumExpr {
             }),
             NumExpr::JsonPointer { pointer, value } => value
                 .eval(request)
-                .and_then(|json| json_pointer(pointer, json, "number", |v| v.as_f64())),
+                .and_then(|json| json_pointer(pointer, json.as_str(), "number", |v| v.as_f64())),
         }
     }
 }
@@ -319,7 +341,7 @@ impl NumExpr {
 // Helpers
 
 /// Parse a HTTP q-value of the form '*/*;q=0.3, text/plain;q=0.7, text/html, text/*;q=0.5'
-fn parse_q_value(value: String) -> Vec<String> {
+fn parse_q_value(value: &str) -> Vec<String> {
     let mut list: Vec<(&str, f32)> = value
         .split(',')
         .map(|q_val| {
@@ -343,20 +365,22 @@ fn parse_q_value(value: String) -> Vec<String> {
 }
 
 // Extract a value out of JSON using a JSON pointer. Useful for JWT tokens for example
-fn json_pointer<T, F>(pointer: &str, json: String, typename: &str, cast: F) -> Result<T, String>
+fn json_pointer<T, F>(pointer: &str, json: &str, typename: &str, cast: F) -> Result<T>
 where
     F: FnOnce(&serde_json::Value) -> Option<T>,
 {
-    serde_json::from_str(json.as_ref())
-        .map_err(|e| format!("{}", e))
-        .and_then(|v: serde_json::Value| {
-            v.pointer(pointer).and_then(cast).ok_or_else(|| {
-                format!(
-                    "Cannot find a {} at pointer {} in JSON {}",
-                    typename, pointer, v
-                )
-            })
-        })
+    let value: serde_json::Value = serde_json::from_str(json)?;
+    if let Some(value) = value.pointer(pointer) {
+        if let Some(v) = cast(value) {
+            return Ok(v);
+        }
+    }
+    Err(anyhow::anyhow!(
+        "Cannot find a {} at pointer {} in JSON {}",
+        typename,
+        pointer,
+        value
+    ))
 }
 
 #[cfg(test)]
@@ -368,18 +392,19 @@ mod test {
 
     #[test_case(NumExpr::Constant(10.0), Ok(10.0))]
     #[test_case(NumExpr::Attribute("number".into()), Ok(1.4))]
-    #[test_case(NumExpr::Attribute("nope".into()), Err("Attribute 'nope' not found.".into()))]
-    #[test_case(NumExpr::Attribute("not-number".into()), Err("Cannot parse 'hi' as number.".into()))]
+    #[test_case(NumExpr::Attribute("nope".into()), Err(anyhow!("Attribute 'nope' not found.")))]
+    #[test_case(NumExpr::Attribute("not-number".into()), Err(anyhow!("invalid float literal")))]
     #[test_case(NumExpr::Rank(StringExpr::Attribute("not-number".into())), Ok(40.9))]
     #[test_case(NumExpr::JsonPointer { pointer: "/foo/0".into(), value: StringExpr::Constant(r#"{"foo":[0.3]}"#.into()) }, Ok(0.3))]
-    #[test_case(NumExpr::JsonPointer { pointer: "/bar/0".into(), value: StringExpr::Constant(r#"{"foo":[0.3]}"#.into()) }, Err("Cannot find a number at pointer /bar/0 in JSON {\"foo\":[0.3]}".into()))]
-    fn evaluate_numerical_expressions(expr: NumExpr, expected: Result<f64, String>) {
+    #[test_case(NumExpr::JsonPointer { pointer: "/bar/0".into(), value: StringExpr::Constant(r#"{"foo":[0.3]}"#.into()) }, Err(anyhow!("Cannot find a number at pointer /bar/0 in JSON {\"foo\":[0.3]}")))]
+    fn evaluate_numerical_expressions(expr: NumExpr, expected: Result<f64>) {
         let request = [("number", "1.4"), ("not-number", "hi")]
             .iter()
             .cloned()
             .collect();
 
-        assert_eq!(expr.eval(&request), expected)
+        let actual = expr.eval(&request);
+        assert_eq!(format!("{:?}", actual), format!("{:?}", expected));
     }
 
     #[test_case(StringExpr::Constant("hello".into()), Ok("hello".into()))]
@@ -387,14 +412,14 @@ mod test {
     #[test_case(StringExpr::Base64(Box::new(StringExpr::Constant("aGVsbG8=".into()))), Ok("hello".into()))]
     #[test_case(StringExpr::First(Box::new(StringListExpr::Constant(vec!["a".into(), "b".into(), "c".into()]))), Ok("a".into()))]
     #[test_case(StringExpr::Last(Box::new(StringListExpr::Constant(vec!["a".into(), "b".into(), "c".into()]))), Ok("c".into()))]
-    #[test_case(StringExpr::First(Box::new(StringListExpr::Constant(vec![]))), Err("List is empty.".into()))]
-    #[test_case(StringExpr::Last(Box::new(StringListExpr::Constant(vec![]))), Err("List is empty.".into()))]
+    #[test_case(StringExpr::First(Box::new(StringListExpr::Constant(vec![]))), Err(anyhow!("List is empty.")))]
+    #[test_case(StringExpr::Last(Box::new(StringListExpr::Constant(vec![]))), Err(anyhow!("List is empty.")))]
     #[test_case(StringExpr::Browser, Ok("Chrome".into()))]
     #[test_case(StringExpr::BrowserVersion, Ok("83.0.4103.61".into()))]
     #[test_case(StringExpr::OperatingSystem, Ok("Mac OSX".into()))]
     #[test_case(StringExpr::JsonPointer { pointer: "/foo/0".into(), value: Box::new(StringExpr::Constant(r#"{"foo":["bar"]}"#.into())) }, Ok("bar".into()))]
-    #[test_case(StringExpr::JsonPointer { pointer: "/foo/0".into(), value: Box::new(StringExpr::Constant(r#"{"foo":[0.3]}"#.into())) }, Err("Cannot find a string at pointer /foo/0 in JSON {\"foo\":[0.3]}".into()))]
-    fn evaluate_string_expressions(expr: StringExpr, expected: Result<String, String>) {
+    #[test_case(StringExpr::JsonPointer { pointer: "/foo/0".into(), value: Box::new(StringExpr::Constant(r#"{"foo":[0.3]}"#.into())) }, Err(anyhow!("Cannot find a string at pointer /foo/0 in JSON {\"foo\":[0.3]}")))]
+    fn evaluate_string_expressions(expr: StringExpr, expected: Result<String>) {
         let request = [
             ("hello", "world"),
             (
@@ -406,30 +431,26 @@ mod test {
         .cloned()
         .collect();
 
-        assert_eq!(expr.eval(&request), expected)
+        let actual = expr.eval(&request);
+        assert_eq!(format!("{:?}", actual), format!("{:?}", expected));
     }
 
     #[test_case(StringListExpr::Constant(vec!["a".into(), "b".into()]), Ok(vec!["a".into(), "b".into()]))]
     #[test_case(StringListExpr::Split { separator: " ".into(), value: StringExpr::Constant("a b".into())}, Ok(vec!["a".into(), "b".into()]))]
     #[test_case(StringListExpr::HttpQualityValue(StringExpr::Attribute("accept".into())), Ok(vec!["text/html".into(), "text/plain".into(), "text/*".into(), "*/*".into()]))]
-    fn evaluate_string_list_expressions(
-        expr: StringListExpr,
-        expected: Result<Vec<String>, String>,
-    ) {
-        let request = [(
+    fn evaluate_string_list_expressions(expr: StringListExpr, expected: Result<Vec<String>>) {
+        let mut request = HashMap::new();
+        request.insert(
             "accept",
             "*/*;q=0.3, text/plain;q=0.7, text/html, text/*;q=0.5",
-        )]
-        .iter()
-        .cloned()
-        .collect();
-
-        assert_eq!(expr.eval(&request), expected)
+        );
+        let actual = expr.eval(&request);
+        assert_eq!(format!("{:?}", actual), format!("{:?}", expected));
     }
 
     #[test_case(BoolExpr::Constant(true), Ok(true))]
     #[test_case(BoolExpr::Attribute("hello".into()), Ok(true))]
-    #[test_case(BoolExpr::Attribute("world".into()), Err("Attribute 'world' not found.".into()))]
+    #[test_case(BoolExpr::Attribute("world".into()), Err(anyhow!("Attribute 'world' not found.")))]
     #[test_case(BoolExpr::In { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), value: StringExpr::Constant("b".into()) }, Ok(true); "list contains value")]
     #[test_case(BoolExpr::In { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), value: StringExpr::Constant("c".into()) }, Ok(false); "list doesn't contain value")]
     #[test_case(BoolExpr::AllIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["a".into(), "b".into()]) }, Ok(true); "list contains all values")]
@@ -437,7 +458,7 @@ mod test {
     #[test_case(BoolExpr::AnyIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["a".into(), "c".into()]) }, Ok(true); "list contains any of the values")]
     #[test_case(BoolExpr::AnyIn { list: StringListExpr::Constant(vec!["a".into(), "b".into()]), values: StringListExpr::Constant(vec!["c".into(), "d".into()]) }, Ok(false); "list doesn't contain any of the values")]
     #[test_case(BoolExpr::JsonPointer { pointer: "/foo/0".into(), value: StringExpr::Constant(r#"{"foo":[true]}"#.into()) }, Ok(true))]
-    #[test_case(BoolExpr::JsonPointer { pointer: "/foo/0".into(), value: StringExpr::Constant(r#"{"foo":[0.3]}"#.into()) }, Err("Cannot find a boolean at pointer /foo/0 in JSON {\"foo\":[0.3]}".into()))]
+    #[test_case(BoolExpr::JsonPointer { pointer: "/foo/0".into(), value: StringExpr::Constant(r#"{"foo":[0.3]}"#.into()) }, Err(anyhow!("Cannot find a boolean at pointer /foo/0 in JSON {\"foo\":[0.3]}")))]
     #[test_case(BoolExpr::Matches(r#"\+440?[0-9]{10}"#.into(), StringExpr::Constant("+4407945123456".into())), Ok(true))]
     #[test_case(BoolExpr::Matches(r#"\+440?[0-9]{10}"#.into(), StringExpr::Constant("+47945123456".into())), Ok(false))]
     #[test_case(BoolExpr::StrEq(StringExpr::Constant("foo".into()), StringExpr::Constant("foo".into())), Ok(true))]
@@ -497,10 +518,11 @@ mod test {
     #[test_case(BoolExpr::And(vec![BoolExpr::Constant(true), BoolExpr::Constant(false)]), Ok(false))]
     #[test_case(BoolExpr::Or(vec![BoolExpr::Constant(true), BoolExpr::Constant(false)]), Ok(true))]
     #[test_case(BoolExpr::Or(vec![BoolExpr::Constant(false), BoolExpr::Constant(false)]), Ok(false))]
-    fn evaluate_boolean_expressions(expr: BoolExpr, expected: Result<bool, String>) {
+    fn evaluate_boolean_expressions(expr: BoolExpr, expected: Result<bool>) {
         let request = [("hello", "world")].iter().cloned().collect();
 
-        assert_eq!(expr.eval(&request), expected)
+        let actual = expr.eval(&request);
+        assert_eq!(format!("{:?}", actual), format!("{:?}", expected));
     }
 
     #[test]
