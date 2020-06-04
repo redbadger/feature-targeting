@@ -89,11 +89,10 @@ impl BoolExpr {
     fn eval(&self, request: &HashMap<&str, &str>) -> Result<bool, String> {
         match &self {
             BoolExpr::Constant(c) => Ok(*c),
-            BoolExpr::Attribute(name) => request
-                .get::<str>(name.as_ref())
-                .map_or(Err(format!("Attribute '{}' not found.", name)), |_| {
-                    Ok(true)
-                }),
+            BoolExpr::Attribute(name) => request.get::<str>(name.as_ref()).map_or_else(
+                || Err(format!("Attribute '{}' not found.", name)),
+                |_| Ok(true),
+            ),
             BoolExpr::In { list, value } => list
                 .eval(request)
                 .and_then(|haystack| value.eval(request).map(|needle| haystack.contains(&needle))),
@@ -225,17 +224,16 @@ impl StringExpr {
     fn eval(&self, request: &HashMap<&str, &str>) -> Result<String, String> {
         match &self {
             StringExpr::Constant(c) => Ok(c.clone()),
-            StringExpr::Attribute(name) => request
-                .get::<str>(name.as_ref())
-                .map_or(Err(format!("Attribute '{}' not found.", name)), |s| {
-                    Ok((*s).to_string())
-                }),
+            StringExpr::Attribute(name) => request.get::<str>(name.as_ref()).map_or_else(
+                || Err(format!("Attribute '{}' not found.", name)),
+                |s| Ok((*s).to_string()),
+            ),
             StringExpr::Base64(value) => value.eval(request).and_then(|v| {
                 base64decode(v)
                     .map_err(|e| format!("{}", e))
                     .and_then(|it| {
                         std::str::from_utf8(&it[..])
-                            .map(|it| it.into())
+                            .map(Into::into)
                             .map_err(|e| format!("{}", e))
                     })
             }),
@@ -261,16 +259,15 @@ fn map_user_agent<V, F: FnOnce(WootheeResult) -> V>(
     request: &HashMap<&str, &str>,
     map: F,
 ) -> Result<V, String> {
-    request
-        .get("user-agent")
-        .map_or(Err("User-Agent header not found".into()), |ua| {
+    request.get("user-agent").map_or_else(
+        || Err("User-Agent header not found".into()),
+        |ua| {
             UserAgentParser::new()
                 .parse(ua)
                 .map(map)
-                .map_or(Err(format!("Malformed User-Agent string: {}", ua)), |it| {
-                    Ok(it)
-                })
-        })
+                .map_or_else(|| Err(format!("Malformed User-Agent string: {}", ua)), Ok)
+        },
+    )
 }
 
 #[derive(Deserialize, Serialize)]
@@ -300,8 +297,8 @@ impl NumExpr {
     fn eval(&self, request: &HashMap<&str, &str>) -> Result<f64, String> {
         match &self {
             NumExpr::Constant(c) => Ok(*c),
-            NumExpr::Attribute(name) => request.get::<str>(name.as_ref()).map_or(
-                Err(format!("Attribute '{}' not found.", name)),
+            NumExpr::Attribute(name) => request.get::<str>(name.as_ref()).map_or_else(
+                || Err(format!("Attribute '{}' not found.", name)),
                 |s| {
                     (*s).parse()
                         .map_err(|_| format!("Cannot parse '{}' as number.", s))
@@ -331,7 +328,7 @@ fn parse_q_value(value: String) -> Vec<String> {
             let q = parts
                 .next()
                 .and_then(|q| q.parse::<f32>().ok())
-                .or(Some(1.0))
+                .or_else(|| Some(1.0))
                 .unwrap();
 
             (v, q)
