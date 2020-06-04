@@ -90,13 +90,10 @@ impl BoolExpr {
     fn eval(&self, request: &HashMap<&str, &str>) -> Result<bool> {
         match &self {
             BoolExpr::Constant(c) => Ok(*c),
-            BoolExpr::Attribute(name) => {
-                if request.get::<str>(name.as_ref()).is_some() {
-                    Ok(true)
-                } else {
-                    Err(anyhow!("Attribute '{}' not found.", name))
-                }
-            }
+            BoolExpr::Attribute(name) => request
+                .get::<str>(name.as_ref())
+                .map(|_| true)
+                .ok_or_else(|| anyhow!("Attribute '{}' not found.", name)),
             BoolExpr::In { list, value } => list
                 .eval(request)
                 .and_then(|haystack| value.eval(request).map(|needle| haystack.contains(&needle))),
@@ -375,7 +372,7 @@ where
             return Ok(v);
         }
     }
-    Err(anyhow::anyhow!(
+    Err(anyhow!(
         "Cannot find a {} at pointer {} in JSON {}",
         typename,
         pointer,
