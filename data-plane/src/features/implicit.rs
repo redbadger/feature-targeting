@@ -88,16 +88,17 @@ pub enum BoolExpr {
 
 impl BoolExpr {
     fn eval(&self, request: &HashMap<&str, &str>) -> Result<bool> {
+        use BoolExpr::*;
         match &self {
-            BoolExpr::Constant(c) => Ok(*c),
-            BoolExpr::Attribute(name) => request
+            Constant(c) => Ok(*c),
+            Attribute(name) => request
                 .get::<str>(name.as_ref())
                 .map(|_| true)
                 .ok_or_else(|| anyhow!("Attribute '{}' not found.", name)),
-            BoolExpr::In { list, value } => list
+            In { list, value } => list
                 .eval(request)
                 .and_then(|haystack| value.eval(request).map(|needle| haystack.contains(&needle))),
-            BoolExpr::AnyIn { list, values } => list.eval(request).and_then(|haystack| {
+            AnyIn { list, values } => list.eval(request).and_then(|haystack| {
                 values.eval(request).map(|needles| {
                     let a: HashSet<_> = haystack.iter().collect();
                     let b: HashSet<_> = needles.iter().collect();
@@ -105,7 +106,7 @@ impl BoolExpr {
                     a.intersection(&b).next().is_some()
                 })
             }),
-            BoolExpr::AllIn { list, values } => list.eval(request).and_then(|haystack| {
+            AllIn { list, values } => list.eval(request).and_then(|haystack| {
                 values.eval(request).map(|needles| {
                     let a: HashSet<_> = haystack.iter().collect();
                     let b: HashSet<_> = needles.iter().collect();
@@ -113,51 +114,51 @@ impl BoolExpr {
                     a.intersection(&b).count() == a.len()
                 })
             }),
-            BoolExpr::JsonPointer { pointer, value } => value
+            JsonPointer { pointer, value } => value
                 .eval(request)
                 .and_then(|json| json_pointer(pointer, json.as_str(), "boolean", |v| v.as_bool())),
-            BoolExpr::Matches(regex, value) => {
+            Matches(regex, value) => {
                 let v = value.eval(request)?;
                 let r = Regex::new(regex)?;
                 Ok(r.is_match(v.as_ref()))
             }
-            BoolExpr::StrEq(left, right) => {
+            StrEq(left, right) => {
                 let l = left.eval(request)?;
                 let r = right.eval(request)?;
                 Ok(l == r)
             }
-            BoolExpr::NumEq(left, right) => {
+            NumEq(left, right) => {
                 let l = left.eval(request)?;
                 let r = right.eval(request)?;
                 Ok((l - r).abs() < std::f64::EPSILON)
             }
-            BoolExpr::Gt(left, right) => {
+            Gt(left, right) => {
                 let l = left.eval(request)?;
                 let r = right.eval(request)?;
                 Ok(l > r)
             }
-            BoolExpr::Lt(left, right) => {
+            Lt(left, right) => {
                 let l = left.eval(request)?;
                 let r = right.eval(request)?;
                 Ok(l < r)
             }
-            BoolExpr::Gte(left, right) => {
+            Gte(left, right) => {
                 let l = left.eval(request)?;
                 let r = right.eval(request)?;
                 Ok(l >= r)
             }
-            BoolExpr::Lte(left, right) => {
+            Lte(left, right) => {
                 let l = left.eval(request)?;
                 let r = right.eval(request)?;
                 Ok(l <= r)
             }
-            BoolExpr::Not(value) => value.eval(request).map(|v| !v),
-            BoolExpr::And(values) => values
+            Not(value) => value.eval(request).map(|v| !v),
+            And(values) => values
                 .iter()
                 .map(|v| v.eval(request))
                 .collect::<Result<Vec<_>, _>>()
                 .map(|it| it.iter().all(|v| *v)),
-            BoolExpr::Or(values) => values
+            Or(values) => values
                 .iter()
                 .map(|v| v.eval(request))
                 .collect::<Result<Vec<_>, _>>()
@@ -183,13 +184,14 @@ pub enum StringListExpr {
 
 impl StringListExpr {
     fn eval(&self, request: &HashMap<&str, &str>) -> Result<Vec<String>> {
+        use StringListExpr::*;
         match &self {
-            StringListExpr::Constant(c) => Ok(c.clone()),
-            StringListExpr::Split { separator, value } => {
+            Constant(c) => Ok(c.clone()),
+            Split { separator, value } => {
                 let s = value.eval(request)?;
                 Ok(s.split(separator).map(|item| item.to_string()).collect())
             }
-            StringListExpr::HttpQualityValue(value) => {
+            HttpQualityValue(value) => {
                 let s = value.eval(request)?;
                 Ok(parse_q_value(s.as_str()))
             }
@@ -235,27 +237,28 @@ pub enum StringExpr {
 
 impl StringExpr {
     fn eval(&self, request: &HashMap<&str, &str>) -> Result<String> {
+        use StringExpr::*;
         match &self {
-            StringExpr::Constant(c) => Ok(c.clone()),
-            StringExpr::Attribute(name) => request.get::<str>(name.as_ref()).map_or_else(
+            Constant(c) => Ok(c.clone()),
+            Attribute(name) => request.get::<str>(name.as_ref()).map_or_else(
                 || Err(anyhow!("Attribute '{}' not found.", name)),
                 |s| Ok((*s).to_string()),
             ),
-            StringExpr::Base64(value) => {
+            Base64(value) => {
                 let s = value.eval(request)?;
                 let bytes = base64decode(s)?;
                 Ok(String::from_utf8(bytes)?)
             }
-            StringExpr::Browser => map_user_agent(request, |ua| ua.name.into()),
-            StringExpr::BrowserVersion => map_user_agent(request, |ua| ua.version.into()),
-            StringExpr::OperatingSystem => map_user_agent(request, |ua| ua.os.into()),
-            StringExpr::JsonPointer { pointer, value } => {
+            Browser => map_user_agent(request, |ua| ua.name.into()),
+            BrowserVersion => map_user_agent(request, |ua| ua.version.into()),
+            OperatingSystem => map_user_agent(request, |ua| ua.os.into()),
+            JsonPointer { pointer, value } => {
                 let json = value.eval(request)?;
                 json_pointer(pointer, json.as_str(), "string", |v| {
                     v.as_str().map(|s| s.to_string())
                 })
             }
-            StringExpr::First(list) => {
+            First(list) => {
                 let v = list.eval(request)?;
                 if let Some(s) = v.first() {
                     Ok(s.clone())
@@ -263,7 +266,7 @@ impl StringExpr {
                     Err(anyhow!("List is empty."))
                 }
             }
-            StringExpr::Last(list) => {
+            Last(list) => {
                 let v = list.eval(request)?;
                 if let Some(s) = v.last() {
                     Ok(s.clone())
@@ -315,20 +318,21 @@ pub enum NumExpr {
 
 impl NumExpr {
     fn eval(&self, request: &HashMap<&str, &str>) -> Result<f64> {
+        use NumExpr::*;
         match &self {
-            NumExpr::Constant(c) => Ok(*c),
-            NumExpr::Attribute(name) => {
+            Constant(c) => Ok(*c),
+            Attribute(name) => {
                 if let Some(s) = request.get::<str>(name.as_ref()) {
                     return Ok((*s).parse::<f64>()?);
                 }
                 Err(anyhow!("Attribute '{}' not found.", name))
             }
-            NumExpr::Rank(str_exp) => str_exp.eval(request).map(|s| {
+            Rank(str_exp) => str_exp.eval(request).map(|s| {
                 let mut hasher = DefaultHasher::new();
                 s.hash(&mut hasher);
                 (hasher.finish() % 1000) as f64 / 10.0
             }),
-            NumExpr::JsonPointer { pointer, value } => value
+            JsonPointer { pointer, value } => value
                 .eval(request)
                 .and_then(|json| json_pointer(pointer, json.as_str(), "number", |v| v.as_f64())),
         }
@@ -356,9 +360,7 @@ fn parse_q_value(value: &str) -> Vec<String> {
 
     list.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
-    list.iter()
-        .map(|(v, _)| (*v).to_string())
-        .collect::<Vec<_>>()
+    list.iter().map(|(v, _)| (*v).to_string()).collect()
 }
 
 // Extract a value out of JSON using a JSON pointer. Useful for JWT tokens for example
