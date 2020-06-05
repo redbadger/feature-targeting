@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 pub mod explicit;
+pub mod implicit;
 
 pub fn target<'a>(request: &HashMap<&str, &'a str>, explicit_config: &explicit::Config) -> String {
     union(
