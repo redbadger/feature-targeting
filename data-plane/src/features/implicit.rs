@@ -9,17 +9,23 @@ use std::{
 use woothee::parser::{Parser as UserAgentParser, WootheeResult};
 
 /// A set of features and their matching rules
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Config(pub Vec<Feature>);
 
+impl Default for Config {
+    fn default() -> Self {
+        Self(vec![])
+    }
+}
+
 /// Feature represents implicit targeting configuration for a single feature flag
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Feature {
     name: String,
     rule: BoolExpr,
 }
 
-pub fn from_request<'a>(request: HashMap<&str, &str>, config: &'a Config) -> Vec<&'a str> {
+pub fn from_request<'a>(request: &HashMap<&str, &str>, config: &'a Config) -> Vec<&'a str> {
     config
         .0
         .iter()
@@ -30,7 +36,7 @@ pub fn from_request<'a>(request: HashMap<&str, &str>, config: &'a Config) -> Vec
         .collect()
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum BoolExpr {
     /// The identity expression
@@ -167,7 +173,7 @@ impl BoolExpr {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum StringListExpr {
     /// The identity expression
@@ -199,7 +205,7 @@ impl StringListExpr {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum StringExpr {
     /// The identity expression
@@ -293,7 +299,7 @@ fn map_user_agent<V, F: FnOnce(WootheeResult) -> V>(
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum NumExpr {
     /// The identity expression
@@ -589,7 +595,7 @@ mod test {
         ]);
 
         assert_eq!(
-            from_request(req, &config),
+            from_request(&req, &config),
             vec!["english", "other-english", "british"]
         );
     }
