@@ -3,10 +3,14 @@ use std::collections::HashMap;
 pub mod explicit;
 pub mod implicit;
 
-pub fn target<'a>(request: &HashMap<&str, &'a str>, explicit_config: &explicit::Config) -> String {
+pub fn target<'a>(
+    request: &HashMap<&str, &'a str>,
+    explicit_config: &explicit::Config,
+    implicit_config: &implicit::Config,
+) -> String {
     union(
         target_explicit(request, explicit_config).as_ref(),
-        target_implicit(request).as_ref(),
+        target_implicit(request, implicit_config).as_ref(),
     )
 }
 
@@ -26,8 +30,11 @@ pub fn target_explicit<'a>(
     explicit::from_request(request, config)
 }
 
-pub fn target_implicit<'a>(_request: &HashMap<&str, &'a str>) -> Vec<&'a str> {
-    vec!["new_feature"]
+pub fn target_implicit<'a>(
+    request: &HashMap<&str, &'a str>,
+    config: &'a implicit::Config,
+) -> Vec<&'a str> {
+    implicit::from_request(request, config)
 }
 
 #[cfg(test)]

@@ -18,5 +18,18 @@ spec:
           "attribute": ":authority",
           "pattern": "f-*.localhost"
         }
+      ],
+      "implicit" : [
+        {
+          "name":"english",
+          "rule": {
+            "any_in": {
+                "list": { "constant": ["en","en-US","en-GB"] },
+                "values": {
+                    "http_quality_value": { "attribute": "accept-language" }
+                }
+            }
+          }
+        }
       ]
     }

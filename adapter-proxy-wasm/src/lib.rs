@@ -1,5 +1,5 @@
 use data_plane::features;
-use features::explicit::Config as ExplicitConfig;
+use features::{explicit::Config as ExplicitConfig, implicit::Config as ImplicitConfig};
 use log::{info, warn};
 use proxy_wasm::{
     traits::*,
@@ -13,6 +13,7 @@ use types::Action;
 struct FilterConfig {
     header_name: String,
     explicit: ExplicitConfig,
+    implicit: ImplicitConfig,
 }
 
 impl Default for FilterConfig {
@@ -20,6 +21,7 @@ impl Default for FilterConfig {
         FilterConfig {
             header_name: "x-feature".to_owned(),
             explicit: ExplicitConfig::default(),
+            implicit: ImplicitConfig::default(),
         }
     }
 }
@@ -95,7 +97,7 @@ impl HttpContext for HttpHandler {
                     "Targeting on request: {:?}, with configuration: {:?}",
                     request, config
                 );
-                let output = features::target(&request, &config.explicit);
+                let output = features::target(&request, &config.explicit, &config.implicit);
                 self.set_http_request_header(config.header_name.as_ref(), Some(output.as_ref()));
 
                 Action::Continue
