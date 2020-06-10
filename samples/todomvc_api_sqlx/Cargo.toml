@@ -1,0 +1,14 @@
+[package]
+name = "todomvc_api_sqlx"
+version = "0.1.0"
+authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.31"
+dataloader = "0.12.0"
+futures = "0.3.5"
+juniper = "0.14.2"
+smol = "0.1.11"
+sqlx = "0.3.5"
+tide = "0.10.0"
