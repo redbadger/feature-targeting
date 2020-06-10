@@ -15,7 +15,7 @@ pub struct Todo {
 #[juniper::graphql_object]
 #[graphql(description = "A todo")]
 impl Todo {
-    #[graphql(description = "A todo id")]
+    #[graphql(description = "The id of the todo")]
     fn id(&self) -> i32 {
         self.id.unwrap_or(0) as i32
     }
@@ -122,10 +122,7 @@ pub async fn handle_graphql(mut cx: Request<State>) -> tide::Result {
         static ref SCHEMA: Schema = create_schema();
     };
 
-    let query: juniper::http::GraphQLRequest = cx
-        .body_json()
-        .await
-        .expect("be able to deserialize the graphql request");
+    let query: juniper::http::GraphQLRequest = cx.body_json().await?;
 
     let response = query.execute(&SCHEMA, cx.state()).await;
 
