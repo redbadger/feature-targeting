@@ -49,10 +49,10 @@ impl Todo {
     }
 
     pub async fn delete(id: i32, pool: &PgPool) -> Result<u64> {
-        let deleted = sqlx::query_file!("sql/delete.sql", id)
+        let count = sqlx::query_file!("sql/delete.sql", id)
             .execute(pool)
             .await?;
 
-        Ok(deleted)
+        Ok(count)
     }
 }

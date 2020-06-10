@@ -87,13 +87,13 @@ pub struct Mutation;
 
 #[juniper::graphql_object(Context=State)]
 impl Mutation {
-    #[graphql_object(description = "Add new todo")]
-    async fn add_todo(context: &State, todo: NewTodo) -> Result<Todo, FieldError> {
+    #[graphql(description = "Create a new todo (returns the created todo)")]
+    async fn create_todo(context: &State, todo: NewTodo) -> Result<Todo, FieldError> {
         let todo = db::Todo::create(todo.title, todo.order, &context.connection_pool).await?;
         Ok(todo.into())
     }
 
-    #[graphql_object(description = "Update todo")]
+    #[graphql(description = "Update a todo (returns the updated todo)")]
     async fn update_todo(context: &State, id: i32, todo: UpdateTodo) -> Result<Todo, FieldError> {
         let todo = db::Todo::update(
             id,
@@ -104,6 +104,11 @@ impl Mutation {
         )
         .await?;
         Ok(todo.into())
+    }
+
+    #[graphql(description = "Delete a todo (returns the number of todos deleted: 1 or 0)")]
+    async fn delete_todo(context: &State, id: i32) -> Result<i32, FieldError> {
+        Ok(db::Todo::delete(id, &context.connection_pool).await? as i32)
     }
 }
 
