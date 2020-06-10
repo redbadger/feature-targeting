@@ -54,7 +54,7 @@ struct NewTodo {
 }
 
 pub struct State {
-    pub todos: Pool<Connection>,
+    pub connection_pool: Pool<Connection>,
 }
 
 impl juniper::Context for State {}
@@ -65,13 +65,13 @@ pub struct Query;
 impl Query {
     #[graphql(description = "Get all Todos")]
     async fn todos(context: &State) -> Result<Vec<Todo>, FieldError> {
-        let todos = db::Todo::find_all(&context.todos).await?;
+        let todos = db::Todo::find_all(&context.connection_pool).await?;
         Ok(todos.iter().cloned().map(Into::into).collect())
     }
 
     #[graphql(description = "Get Todo by id")]
     async fn todo(context: &State, id: i32) -> Result<Todo, FieldError> {
-        let todo = db::Todo::find_by_id(id as i32, &context.todos).await?;
+        let todo = db::Todo::find_by_id(id as i32, &context.connection_pool).await?;
         Ok(todo.into())
     }
 }
@@ -82,7 +82,7 @@ pub struct Mutation;
 impl Mutation {
     #[graphql_object(description = "Add new todo")]
     async fn add_todo(context: &State, todo: NewTodo) -> Result<Todo, FieldError> {
-        let todo = db::Todo::create(todo.title, todo.order, &context.todos).await?;
+        let todo = db::Todo::create(todo.title, todo.order, &context.connection_pool).await?;
         Ok(todo.into())
     }
 }
