@@ -1,16 +1,18 @@
-use juniper::RootNode;
-use std::sync::RwLock;
+use super::db;
+use anyhow::Result;
+use juniper::{EmptySubscription, FieldError, RootNode};
+use sqlx::{PgConnection as Connection, Pool};
 use tide::{Body, Request, Response, StatusCode};
 
 #[derive(Clone)]
 pub struct Todo {
-    id: Option<u16>,
+    id: Option<u32>,
     title: String,
     completed: bool,
     order: Option<i32>,
 }
 
-#[juniper::object]
+#[juniper::graphql_object]
 #[graphql(description = "A todo")]
 impl Todo {
     #[graphql(description = "A todo id")]
@@ -34,57 +36,54 @@ impl Todo {
     }
 }
 
+impl From<db::Todo> for Todo {
+    fn from(d: db::Todo) -> Self {
+        Self {
+            id: Some(d.id as u32),
+            title: d.title,
+            completed: d.completed,
+            order: d.order,
+        }
+    }
+}
+
 #[derive(juniper::GraphQLInputObject)]
 struct NewTodo {
     title: String,
     order: Option<i32>,
 }
 
-impl NewTodo {
-    fn into_internal(self) -> Todo {
-        Todo {
-            id: None,
-            title: self.title,
-            completed: false,
-            order: self.order,
-        }
-    }
-}
-
 pub struct State {
-    pub todos: RwLock<Vec<Todo>>,
+    pub todos: Pool<Connection>,
 }
 
 impl juniper::Context for State {}
 
-pub struct QueryRoot;
+pub struct Query;
 
-#[juniper::object(Context=State)]
-impl QueryRoot {
+#[juniper::graphql_object(Context=State)]
+impl Query {
     #[graphql(description = "Get all Todos")]
-    fn todos(context: &State) -> Vec<Todo> {
-        let todos = context.todos.read().unwrap();
-        todos.iter().cloned().collect()
+    async fn todos(context: &State) -> Result<Vec<Todo>, FieldError> {
+        let todos = db::Todo::find_all(&context.todos).await?;
+        Ok(todos.iter().cloned().map(Into::into).collect())
     }
 }
 
-pub struct MutationRoot;
+pub struct Mutation;
 
-#[juniper::object(Context=State)]
-impl MutationRoot {
-    #[graphql(description = "Add new todo")]
-    fn add_todo(context: &State, todo: NewTodo) -> Todo {
-        let mut todos = context.todos.write().unwrap();
-        let mut todo = todo.into_internal();
-        todo.id = Some((todos.len() + 1) as u16);
-        todos.push(todo.clone());
-        todo
+#[juniper::graphql_object(Context=State)]
+impl Mutation {
+    #[graphql_object(description = "Add new todo")]
+    async fn add_todo(context: &State, todo: NewTodo) -> Result<Todo, FieldError> {
+        let todo = db::Todo::create(todo.title, todo.order, &context.todos).await?;
+        Ok(todo.into())
     }
 }
 
-pub type Schema = RootNode<'static, QueryRoot, MutationRoot>;
+pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<State>>;
 fn create_schema() -> Schema {
-    Schema::new(QueryRoot {}, MutationRoot {})
+    Schema::new(Query {}, Mutation {}, EmptySubscription::<State>::new())
 }
 
 pub async fn handle_graphql(mut cx: Request<State>) -> tide::Result {
@@ -94,7 +93,7 @@ pub async fn handle_graphql(mut cx: Request<State>) -> tide::Result {
         .expect("be able to deserialize the graphql request");
 
     let schema = create_schema(); // probably worth making the schema a singleton using lazy_static library
-    let response = query.execute(&schema, cx.state());
+    let response = query.execute(&schema, cx.state()).await;
     let status = if response.is_ok() {
         StatusCode::Ok
     } else {
@@ -108,7 +107,7 @@ pub async fn handle_graphql(mut cx: Request<State>) -> tide::Result {
 
 pub async fn handle_graphiql(_: Request<State>) -> tide::Result {
     let mut res = Response::new(StatusCode::Ok);
-    res.set_body(juniper::http::graphiql::graphiql_source("/graphql"));
+    res.set_body(juniper::http::graphiql::graphiql_source("/graphql", None));
     res.set_content_type(tide::http::mime::HTML);
     Ok(res)
 }
