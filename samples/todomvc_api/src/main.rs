@@ -12,7 +12,7 @@ fn main() -> Result<()> {
 }
 
 async fn start(database_url: &str) -> Result<()> {
-    let app = todomvc_api_sqlx::create_app(database_url).await?;
+    let app = todomvc_api::create_app(database_url).await?;
     app.listen("0.0.0.0:3030").await?;
     Ok(())
 }

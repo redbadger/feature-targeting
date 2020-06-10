@@ -1,16 +1,13 @@
 [package]
-name = "todomvc_api_sqlx"
+name = "todomvc_api"
 version = "0.1.0"
 authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
 edition = "2018"
 
 [dependencies]
 anyhow = "1.0.31"
-async-trait = "0.1.35"
-dataloader = "0.12.0"
 dotenv = "0.15.0"
 env_logger = "0.7.1"
-futures = "0.3.5"
 juniper = { git="https://github.com/graphql-rust/juniper" }
 lazy_static = "1.4.0"
 smol = "0.1.11"
