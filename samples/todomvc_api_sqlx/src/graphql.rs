@@ -6,7 +6,7 @@ use tide::{Body, Request, Response, StatusCode};
 
 #[derive(Clone)]
 pub struct Todo {
-    id: Option<u32>,
+    id: Option<i32>,
     title: String,
     completed: bool,
     order: Option<i32>,
@@ -39,7 +39,7 @@ impl Todo {
 impl From<db::Todo> for Todo {
     fn from(d: db::Todo) -> Self {
         Self {
-            id: Some(d.id as u32),
+            id: Some(d.id),
             title: d.title,
             completed: d.completed,
             order: d.order,
@@ -67,6 +67,12 @@ impl Query {
     async fn todos(context: &State) -> Result<Vec<Todo>, FieldError> {
         let todos = db::Todo::find_all(&context.todos).await?;
         Ok(todos.iter().cloned().map(Into::into).collect())
+    }
+
+    #[graphql(description = "Get Todo by id")]
+    async fn todo(context: &State, id: i32) -> Result<Todo, FieldError> {
+        let todo = db::Todo::find_by_id(id as i32, &context.todos).await?;
+        Ok(todo.into())
     }
 }
 

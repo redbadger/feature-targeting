@@ -1,7 +1,7 @@
 use anyhow::Result;
-use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
+use sqlx::PgPool;
 
-#[derive(FromRow, Clone)]
+#[derive(Clone)]
 pub struct Todo {
     pub id: i32,
     pub title: String,
@@ -11,60 +11,56 @@ pub struct Todo {
 
 impl Todo {
     pub async fn find_all(pool: &PgPool) -> Result<Vec<Todo>> {
-        let mut todos = vec![];
-        let records = sqlx::query!(
+        let records = sqlx::query_as!(
+            Todo,
             r#"
-                SELECT id, title, completed, item_order
-                    FROM todos
+                SELECT id,
+                    title,
+                    completed,
+                    item_order as order
+                FROM todos
                 ORDER BY id
-            "#
+            "#,
         )
         .fetch_all(pool)
         .await?;
-
-        for rec in records {
-            todos.push(Todo {
-                id: rec.id,
-                title: rec.title,
-                completed: rec.completed,
-                order: rec.item_order,
-            });
-        }
-
-        Ok(todos)
+        Ok(records)
     }
 
     pub async fn find_by_id(id: i32, pool: &PgPool) -> Result<Todo> {
-        let rec = sqlx::query!(
+        let record = sqlx::query_as!(
+            Todo,
             r#"
-                    SELECT * FROM todos WHERE id = $1
-                "#,
-            id
+                SELECT id,
+                    title,
+                    completed,
+                    item_order as order
+                FROM todos
+                WHERE id = $1        
+            "#,
+            id,
         )
         .fetch_one(pool)
         .await?;
 
-        Ok(Todo {
-            id: rec.id,
-            title: rec.title,
-            completed: rec.completed,
-            order: rec.item_order,
-        })
+        Ok(record)
     }
 
     pub async fn create(title: String, order: Option<i32>, pool: &PgPool) -> Result<Todo> {
         let mut tx = pool.begin().await?;
-        let todo = sqlx::query(
-            "INSERT INTO todos (title, item_order) VALUES ($1, $2) RETURNING id, title, completed, item_order",
+        let todo = sqlx::query_as!(
+            Todo,
+            r#"
+                INSERT INTO todos (title, item_order)
+                VALUES ($1, $2)
+                RETURNING id,
+                    title,
+                    completed,
+                    item_order AS order
+            "#,
+            &title,
+            order,
         )
-        .bind(&title)
-        .bind(order)
-        .map(|row: PgRow| Todo {
-            id: row.get(0),
-            title: row.get(1),
-            completed: row.get(2),
-            order: row.get(3),
-        })
         .fetch_one(&mut tx)
         .await?;
 
@@ -80,21 +76,26 @@ impl Todo {
         pool: &PgPool,
     ) -> Result<Todo> {
         let mut tx = pool.begin().await.unwrap();
-        let todo = sqlx::query("UPDATE todos SET title = $1, completed = $2, order = $3 WHERE id = $4 RETURNING id, title, completed, item_order")
-            .bind(&title)
-            .bind(completed)
-            .bind(order)
-            .bind(id)
-            .map(|row: PgRow| {
-                Todo {
-                    id: row.get(0),
-                    title: row.get(1),
-                    completed: row.get(2),
-                    order: row.get(3),
-                }
-            })
-            .fetch_one(&mut tx)
-            .await?;
+        let todo = sqlx::query_as!(
+            Todo,
+            r#"
+                UPDATE todos
+                SET title = $1,
+                    completed = $2,
+                    item_order = $3
+                WHERE id = $4
+                RETURNING id,
+                    title,
+                    completed,
+                    item_order AS order
+            "#,
+            &title,
+            completed,
+            order,
+            id
+        )
+        .fetch_one(&mut tx)
+        .await?;
 
         tx.commit().await.unwrap();
         Ok(todo)
@@ -102,10 +103,15 @@ impl Todo {
 
     pub async fn delete(id: i32, pool: &PgPool) -> Result<u64> {
         let mut tx = pool.begin().await?;
-        let deleted = sqlx::query("DELETE FROM todos WHERE id = $1")
-            .bind(id)
-            .execute(&mut tx)
-            .await?;
+        let deleted = sqlx::query!(
+            r#"
+                DELETE FROM todos
+                WHERE id = $1
+            "#,
+            id
+        )
+        .execute(&mut tx)
+        .await?;
 
         tx.commit().await?;
         Ok(deleted)
