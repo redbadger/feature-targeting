@@ -1816,6 +1816,7 @@ dependencies = [
  "env_logger",
  "futures",
  "juniper",
+ "lazy_static",
  "smol",
  "sqlx",
  "tide",

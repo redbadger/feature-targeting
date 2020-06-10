@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use anyhow::Result;
 use sqlx::PgPool;
 use tide::{Redirect, Server};
