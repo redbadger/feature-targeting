@@ -53,6 +53,13 @@ struct NewTodo {
     order: Option<i32>,
 }
 
+#[derive(juniper::GraphQLInputObject)]
+struct UpdateTodo {
+    title: Option<String>,
+    completed: Option<bool>,
+    order: Option<i32>,
+}
+
 pub struct State {
     pub connection_pool: Pool<Connection>,
 }
@@ -83,6 +90,19 @@ impl Mutation {
     #[graphql_object(description = "Add new todo")]
     async fn add_todo(context: &State, todo: NewTodo) -> Result<Todo, FieldError> {
         let todo = db::Todo::create(todo.title, todo.order, &context.connection_pool).await?;
+        Ok(todo.into())
+    }
+
+    #[graphql_object(description = "Update todo")]
+    async fn update_todo(context: &State, id: i32, todo: UpdateTodo) -> Result<Todo, FieldError> {
+        let todo = db::Todo::update(
+            id,
+            todo.title,
+            todo.completed,
+            todo.order,
+            &context.connection_pool,
+        )
+        .await?;
         Ok(todo.into())
     }
 }
