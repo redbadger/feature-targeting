@@ -1,0 +1,8 @@
+query GetAll {
+  todos {
+    id
+    title
+    completed
+    order
+  }
+}
