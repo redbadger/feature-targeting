@@ -10,6 +10,7 @@ async-graphql = "1.15.5"
 async-graphql-tide = "1.15.0"
 dotenv = "0.15.0"
 env_logger = "0.7.1"
+http-types = "2.2.0"
 smol = "0.1.11"
 sqlx = { version = "0.3.5", features = [ "postgres", "macros" ] }
 tide = "0.10.0"
