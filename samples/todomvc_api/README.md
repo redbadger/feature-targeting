@@ -10,7 +10,7 @@ Currently supports:
 
 Built with:
 
-- [`juniper`](https://github.com/graphql-rust/juniper) (for GraphQL)
+- [`async-graphql`](https://github.com/async-graphql/async-graphql) (for GraphQL)
 - [`tide`](https://github.com/http-rs/tide) (for HTTP server)
 - [`smol`](https://github.com/stjepang/smol) (for async runtime)
 - [`sqlx`](https://github.com/launchbadge/sqlx) (for SQL queries)

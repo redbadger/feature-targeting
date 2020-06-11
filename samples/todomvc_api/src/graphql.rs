@@ -1,39 +1,21 @@
 use super::db;
-use anyhow::Result;
-use juniper::{EmptySubscription, FieldError, RootNode};
+use async_graphql::{
+    http::{playground_source, GraphQLPlaygroundConfig},
+    Context, EmptySubscription, FieldResult, InputObject, Object, Schema, SimpleObject,
+};
 use sqlx::{PgConnection as Connection, Pool};
-use tide::{Body, Request, Response, StatusCode};
+use tide::{http::mime, Body, Request, Response, StatusCode};
 
-#[derive(Clone)]
+#[SimpleObject(desc = "A todo")]
 pub struct Todo {
+    #[field(desc = "The id of the todo")]
     id: Option<i32>,
+    #[field(desc = "The title of the todo")]
     title: String,
+    #[field(desc = "Is the todo completed?")]
     completed: bool,
+    #[field(desc = "The order of the todo")]
     order: Option<i32>,
-}
-
-#[juniper::graphql_object]
-#[graphql(description = "A todo")]
-impl Todo {
-    #[graphql(description = "The id of the todo")]
-    fn id(&self) -> i32 {
-        self.id.unwrap_or(0) as i32
-    }
-
-    #[graphql(description = "The title of the todo")]
-    fn title(&self) -> &str {
-        &self.title
-    }
-
-    #[graphql(description = "Is the todo completed?")]
-    fn completed(&self) -> bool {
-        self.completed
-    }
-
-    #[graphql(description = "The order of the todo")]
-    fn order(&self) -> Option<i32> {
-        self.order
-    }
 }
 
 impl From<db::Todo> for Todo {
@@ -47,13 +29,13 @@ impl From<db::Todo> for Todo {
     }
 }
 
-#[derive(juniper::GraphQLInputObject)]
+#[InputObject]
 struct NewTodo {
     title: String,
     order: Option<i32>,
 }
 
-#[derive(juniper::GraphQLInputObject)]
+#[InputObject]
 struct UpdateTodo {
     title: Option<String>,
     completed: Option<bool>,
@@ -61,85 +43,75 @@ struct UpdateTodo {
 }
 
 pub struct State {
-    pub connection_pool: Pool<Connection>,
+    pub schema: Schema<QueryRoot, MutationRoot, EmptySubscription>,
 }
 
-impl juniper::Context for State {}
+impl State {
+    pub fn new(pool: Pool<Connection>) -> State {
+        State {
+            schema: Schema::build(QueryRoot, MutationRoot, EmptySubscription)
+                .data(pool)
+                .finish(),
+        }
+    }
+}
 
-pub struct Query;
+pub struct QueryRoot;
 
-#[juniper::graphql_object(Context=State)]
-impl Query {
-    #[graphql(description = "Get all Todos")]
-    async fn todos(context: &State) -> Result<Vec<Todo>, FieldError> {
-        let todos = db::Todo::find_all(&context.connection_pool).await?;
+#[Object]
+impl QueryRoot {
+    #[field(desc = "Get all Todos")]
+    async fn todos(&self, context: &Context<'_>) -> FieldResult<Vec<Todo>> {
+        let todos = db::Todo::find_all(&context.data()).await?;
         Ok(todos.iter().cloned().map(Into::into).collect())
     }
 
-    #[graphql(description = "Get Todo by id")]
-    async fn todo(context: &State, id: i32) -> Result<Todo, FieldError> {
-        let todo = db::Todo::find_by_id(id as i32, &context.connection_pool).await?;
+    #[field(desc = "Get Todo by id")]
+    async fn todo(&self, context: &Context<'_>, id: i32) -> FieldResult<Todo> {
+        let todo = db::Todo::find_by_id(id as i32, &context.data()).await?;
         Ok(todo.into())
     }
 }
 
-pub struct Mutation;
+pub struct MutationRoot;
 
-#[juniper::graphql_object(Context=State)]
-impl Mutation {
-    #[graphql(description = "Create a new todo (returns the created todo)")]
-    async fn create_todo(context: &State, todo: NewTodo) -> Result<Todo, FieldError> {
-        let todo = db::Todo::create(todo.title, todo.order, &context.connection_pool).await?;
+#[Object]
+impl MutationRoot {
+    #[field(desc = "Create a new todo (returns the created todo)")]
+    async fn create_todo(&self, context: &Context<'_>, todo: NewTodo) -> FieldResult<Todo> {
+        let todo = db::Todo::create(todo.title, todo.order, &context.data()).await?;
         Ok(todo.into())
     }
 
-    #[graphql(description = "Update a todo (returns the updated todo)")]
-    async fn update_todo(context: &State, id: i32, todo: UpdateTodo) -> Result<Todo, FieldError> {
-        let todo = db::Todo::update(
-            id,
-            todo.title,
-            todo.completed,
-            todo.order,
-            &context.connection_pool,
-        )
-        .await?;
+    #[field(desc = "Update a todo (returns the updated todo)")]
+    async fn update_todo(
+        &self,
+        context: &Context<'_>,
+        id: i32,
+        todo: UpdateTodo,
+    ) -> FieldResult<Todo> {
+        let todo =
+            db::Todo::update(id, todo.title, todo.completed, todo.order, &context.data()).await?;
         Ok(todo.into())
     }
 
-    #[graphql(description = "Delete a todo (returns the number of todos deleted: 1 or 0)")]
-    async fn delete_todo(context: &State, id: i32) -> Result<i32, FieldError> {
-        Ok(db::Todo::delete(id, &context.connection_pool).await? as i32)
+    #[field(desc = "Delete a todo (returns the number of todos deleted: 1 or 0)")]
+    async fn delete_todo(&self, context: &Context<'_>, id: i32) -> FieldResult<i32> {
+        Ok(db::Todo::delete(id, &context.data()).await? as i32)
     }
 }
 
-pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<State>>;
-fn create_schema() -> Schema {
-    Schema::new(Query {}, Mutation {}, EmptySubscription::<State>::new())
-}
-
-pub async fn handle_graphql(mut cx: Request<State>) -> tide::Result {
-    lazy_static! {
-        static ref SCHEMA: Schema = create_schema();
-    };
-
-    let query: juniper::http::GraphQLRequest = cx.body_json().await?;
-
-    let response = query.execute(&SCHEMA, cx.state()).await;
-
-    let status = if response.is_ok() {
-        StatusCode::Ok
-    } else {
-        StatusCode::BadRequest
-    };
-
-    let mut res = Response::new(status);
-    res.set_body(Body::from_json(&response)?);
-    Ok(res)
+pub async fn handle_graphql(req: Request<State>) -> tide::Result {
+    let schema = req.state().schema.clone();
+    async_graphql_tide::graphql(req, schema, |query_builder| query_builder).await
 }
 
 pub async fn handle_graphiql(_: Request<State>) -> tide::Result {
-    let mut res = Response::new(StatusCode::Ok);
-    res.set_body(juniper::http::graphiql::graphiql_source("/graphql", None));
-    res.set_content_type(tide::http::mime::HTML);
-    Ok(res)
+    let mut response = Response::new(StatusCode::Ok);
+    response.set_body(Body::from_string(playground_source(
+        GraphQLPlaygroundConfig::new("/graphql"),
+    )));
+    response.set_content_type(mime::HTML);
+
+    Ok(response)
 }
