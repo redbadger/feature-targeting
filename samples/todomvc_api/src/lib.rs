@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use tide::{Redirect, Server};
 
 mod db;
-pub mod graphql;
+mod graphql;
 
 pub async fn create_app(database_url: &str) -> Result<Server<graphql::State>> {
     let connection_pool = PgPool::new(database_url).await?;
