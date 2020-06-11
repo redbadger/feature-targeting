@@ -1,367 +1,418 @@
-#![recursion_limit = "512"]
+use enclose::enc;
+use graphql_client::{GraphQLQuery, Response};
+use indexmap::IndexMap;
+use seed::{prelude::*, *};
+use serde::{Deserialize, Serialize};
+use std::mem;
+use uuid::Uuid;
+use web_sys::HtmlInputElement;
 
-use serde_derive::{Deserialize, Serialize};
-use strum::IntoEnumIterator;
-use strum_macros::{EnumIter, ToString};
-use wasm_bindgen::prelude::*;
-use yew::{
-    format::Json,
-    prelude::*,
-    services::storage::{Area, StorageService},
-};
+const ENTER_KEY: u32 = 13;
+const ESC_KEY: u32 = 27;
+const API_URL: &str = "http://localhost:3030/graphql";
 
-const KEY: &str = "yew.todomvc.self";
+type TodoId = Uuid;
 
-pub struct Model {
-    link: ComponentLink<Self>,
-    storage: StorageService,
-    state: State,
+macro_rules! generate_query {
+    ($query:ident) => {
+        #[derive(GraphQLQuery)]
+        #[graphql(
+            schema_path = "graphql/schema.graphql",
+            query_path = "graphql/queries.graphql",
+            response_derives = "Debug"
+        )]
+        struct $query;
+    };
+}
+generate_query!(GetAll);
+
+async fn send_graphql_request<V, T>(variables: &V) -> fetch::Result<T>
+where
+    V: Serialize,
+    T: for<'de> Deserialize<'de> + 'static,
+{
+    Request::new(API_URL)
+        .method(Method::Post)
+        .json(variables)?
+        .fetch()
+        .await?
+        .check_status()?
+        .json()
+        .await
+}
+
+fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    orders
+        .subscribe(Msg::UrlChanged)
+        .notify(subs::UrlChanged(url));
+
+    orders.perform_cmd(async {
+        Msg::TodosFetched(send_graphql_request(&GetAll::build_query(get_all::Variables)).await)
+    });
+
+    Model {
+        data: Data::default(),
+        refs: Refs::default(),
+    }
+}
+
+struct Model {
+    data: Data,
+    refs: Refs,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+struct Data {
+    todos: IndexMap<TodoId, Todo>,
+    filter: TodoFilter,
+    new_todo_title: String,
+    editing_todo: Option<EditingTodo>,
+}
+
+#[derive(Default)]
+struct Refs {
+    editing_todo_input: ElRef<HtmlInputElement>,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct State {
-    entries: Vec<Entry>,
-    filter: Filter,
-    value: String,
-    edit_value: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Entry {
-    description: String,
+struct Todo {
+    title: String,
     completed: bool,
-    editing: bool,
 }
 
-pub enum Msg {
-    Add,
-    Edit(usize),
-    Update(String),
-    UpdateEdit(String),
-    Remove(usize),
-    SetFilter(Filter),
-    ToggleAll,
-    ToggleEdit(usize),
-    Toggle(usize),
-    ClearCompleted,
-    Nope,
+#[derive(Serialize, Deserialize)]
+struct EditingTodo {
+    id: TodoId,
+    title: String,
 }
 
-impl Component for Model {
-    type Message = Msg;
-    type Properties = ();
-
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local).expect("storage was disabled by the user");
-        let entries = {
-            if let Json(Ok(restored_model)) = storage.restore(KEY) {
-                restored_model
-            } else {
-                Vec::new()
-            }
-        };
-        let state = State {
-            entries,
-            filter: Filter::All,
-            value: "".into(),
-            edit_value: "".into(),
-        };
-        Model {
-            link,
-            storage,
-            state,
-        }
-    }
-
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        match msg {
-            Msg::Add => {
-                let entry = Entry {
-                    description: self.state.value.clone(),
-                    completed: false,
-                    editing: false,
-                };
-                self.state.entries.push(entry);
-                self.state.value = "".to_string();
-            }
-            Msg::Edit(idx) => {
-                let edit_value = self.state.edit_value.clone();
-                self.state.complete_edit(idx, edit_value);
-                self.state.edit_value = "".to_string();
-            }
-            Msg::Update(val) => {
-                println!("Input: {}", val);
-                self.state.value = val;
-            }
-            Msg::UpdateEdit(val) => {
-                println!("Input: {}", val);
-                self.state.edit_value = val;
-            }
-            Msg::Remove(idx) => {
-                self.state.remove(idx);
-            }
-            Msg::SetFilter(filter) => {
-                self.state.filter = filter;
-            }
-            Msg::ToggleEdit(idx) => {
-                self.state.edit_value = self.state.entries[idx].description.clone();
-                self.state.toggle_edit(idx);
-            }
-            Msg::ToggleAll => {
-                let status = !self.state.is_all_completed();
-                self.state.toggle_all(status);
-            }
-            Msg::Toggle(idx) => {
-                self.state.toggle(idx);
-            }
-            Msg::ClearCompleted => {
-                self.state.clear_completed();
-            }
-            Msg::Nope => {}
-        }
-        self.storage.store(KEY, Json(&self.state.entries));
-        true
-    }
-
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
-        html! {
-            <div class="todomvc-wrapper">
-                <section class="todoapp">
-                    <header class="header">
-                        <h1>{ "todos" }</h1>
-                        { self.view_input() }
-                    </header>
-                    <section class="main">
-                        <input
-                            type="checkbox"
-                            class="toggle-all"
-                            checked=self.state.is_all_completed()
-                            onclick=self.link.callback(|_| Msg::ToggleAll) />
-                        <ul class="todo-list">
-                            { for self.state.entries.iter().filter(|e| self.state.filter.fit(e)).enumerate().map(|e| self.view_entry(e)) }
-                        </ul>
-                    </section>
-                    <footer class="footer">
-                        <span class="todo-count">
-                            <strong>{ self.state.total() }</strong>
-                            { " item(s) left" }
-                        </span>
-                        <ul class="filters">
-                            { for Filter::iter().map(|flt| self.view_filter(flt)) }
-                        </ul>
-                        <button class="clear-completed" onclick=self.link.callback(|_| Msg::ClearCompleted)>
-                            { format!("Clear completed ({})", self.state.total_completed()) }
-                        </button>
-                    </footer>
-                </section>
-                <footer class="info">
-                    <p>{ "Click to edit a todo" }</p>
-                </footer>
-            </div>
-        }
-    }
-}
-
-impl Model {
-    fn view_filter(&self, filter: Filter) -> Html {
-        let flt = filter.clone();
-        html! {
-            <li>
-                <a class=if self.state.filter == flt { "selected" } else { "not-selected" }
-                   href=&flt
-                   onclick=self.link.callback(move |_| Msg::SetFilter(flt.clone()))>
-                    { filter }
-                </a>
-            </li>
-        }
-    }
-
-    fn view_input(&self) -> Html {
-        html! {
-            // You can use standard Rust comments. One line:
-            // <li></li>
-            <input class="new-todo"
-                   placeholder="What needs to be done?"
-                   value=&self.state.value
-                   oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
-                   onkeypress=self.link.callback(|e: KeyboardEvent| {
-                       if e.key() == "Enter" { Msg::Add } else { Msg::Nope }
-                   }) />
-            /* Or multiline:
-            <ul>
-                <li></li>
-            </ul>
-            */
-        }
-    }
-
-    fn view_entry(&self, (idx, entry): (usize, &Entry)) -> Html {
-        let mut class = "todo".to_string();
-        if entry.editing {
-            class.push_str(" editing");
-        }
-        if entry.completed {
-            class.push_str(" completed");
-        }
-        html! {
-            <li class=class>
-                <div class="view">
-                    <input
-                        type="checkbox"
-                        class="toggle"
-                        checked=entry.completed
-                        onclick=self.link.callback(move |_| Msg::Toggle(idx)) />
-                    <label onclick=self.link.callback(move |_| Msg::ToggleEdit(idx))>{ &entry.description }</label>
-                    <button class="destroy" onclick=self.link.callback(move |_| Msg::Remove(idx)) />
-                </div>
-                { self.view_entry_edit_input((idx, &entry)) }
-            </li>
-        }
-    }
-
-    fn view_entry_edit_input(&self, (idx, entry): (usize, &Entry)) -> Html {
-        if entry.editing {
-            html! {
-                <input class="edit"
-                       type="text"
-                       value=&entry.description
-                       oninput=self.link.callback(|e: InputData| Msg::UpdateEdit(e.value))
-                       onblur=self.link.callback(move |_| Msg::Edit(idx))
-                       onkeypress=self.link.callback(move |e: KeyboardEvent| {
-                          if e.key() == "Enter" { Msg::Edit(idx) } else { Msg::Nope }
-                       }) />
-            }
-        } else {
-            html! { <input type="hidden" /> }
-        }
-    }
-}
-
-#[derive(EnumIter, ToString, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Filter {
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+enum TodoFilter {
     All,
     Active,
     Completed,
 }
 
-impl<'a> Into<Href> for &'a Filter {
-    fn into(self) -> Href {
-        match *self {
-            Filter::All => "#/".into(),
-            Filter::Active => "#/active".into(),
-            Filter::Completed => "#/completed".into(),
+impl Default for TodoFilter {
+    fn default() -> Self {
+        Self::All
+    }
+}
+
+impl TodoFilter {
+    fn to_url_path(self) -> &'static str {
+        match self {
+            Self::All => "",
+            Self::Active => "active",
+            Self::Completed => "completed",
         }
     }
 }
 
-impl Filter {
-    fn fit(&self, entry: &Entry) -> bool {
-        match *self {
-            Filter::All => true,
-            Filter::Active => !entry.completed,
-            Filter::Completed => entry.completed,
-        }
-    }
+enum Msg {
+    TodosFetched(fetch::Result<Response<get_all::ResponseData>>),
+    UrlChanged(subs::UrlChanged),
+
+    NewTodoTitleChanged(String),
+    ClearCompleted,
+    ToggleAll,
+
+    CreateNewTodo,
+    ToggleTodo(TodoId),
+    RemoveTodo(TodoId),
+
+    StartTodoEdit(TodoId),
+    EditingTodoTitleChanged(String),
+    SaveEditingTodo,
+    CancelTodoEdit,
 }
 
-impl State {
-    fn total(&self) -> usize {
-        self.entries.len()
-    }
-
-    fn total_completed(&self) -> usize {
-        self.entries
-            .iter()
-            .filter(|e| Filter::Completed.fit(e))
-            .count()
-    }
-
-    fn is_all_completed(&self) -> bool {
-        let mut filtered_iter = self
-            .entries
-            .iter()
-            .filter(|e| self.filter.fit(e))
-            .peekable();
-
-        if filtered_iter.peek().is_none() {
-            return false;
-        }
-
-        filtered_iter.all(|e| e.completed)
-    }
-
-    fn toggle_all(&mut self, value: bool) {
-        for entry in self.entries.iter_mut() {
-            if self.filter.fit(entry) {
-                entry.completed = value;
+fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
+    let data = &mut model.data;
+    match msg {
+        Msg::TodosFetched(Ok(Response {
+            data: Some(response_data),
+            ..
+        })) => {
+            for todo in response_data.todos.iter() {
+                data.todos.insert(
+                    TodoId::new_v4(),
+                    Todo {
+                        title: todo.title.clone(),
+                        completed: todo.completed,
+                    },
+                );
             }
         }
-    }
+        Msg::TodosFetched(error) => log!(error),
+        Msg::UrlChanged(subs::UrlChanged(mut url)) => {
+            data.filter = match url.next_path_part() {
+                Some(path_part) if path_part == TodoFilter::Active.to_url_path() => {
+                    TodoFilter::Active
+                }
+                Some(path_part) if path_part == TodoFilter::Completed.to_url_path() => {
+                    TodoFilter::Completed
+                }
+                _ => TodoFilter::All,
+            };
+        }
+        Msg::NewTodoTitleChanged(title) => {
+            data.new_todo_title = title;
+        }
+        Msg::ClearCompleted => {
+            data.todos.retain(|_, todo| !todo.completed);
+        }
+        Msg::ToggleAll => {
+            let all_todos_completed = data.todos.values().all(|todo| todo.completed);
 
-    fn clear_completed(&mut self) {
-        let entries = self
-            .entries
-            .drain(..)
-            .filter(|e| Filter::Active.fit(e))
-            .collect();
-        self.entries = entries;
-    }
+            for (_, todo) in &mut data.todos {
+                todo.completed = !all_todos_completed
+            }
+        }
 
-    fn toggle(&mut self, idx: usize) {
-        let filter = self.filter.clone();
-        let mut entries = self
-            .entries
-            .iter_mut()
-            .filter(|e| filter.fit(e))
-            .collect::<Vec<_>>();
-        let entry = entries.get_mut(idx).unwrap();
-        entry.completed = !entry.completed;
-    }
+        Msg::CreateNewTodo => {
+            data.todos.insert(
+                TodoId::new_v4(),
+                Todo {
+                    title: mem::take(&mut data.new_todo_title),
+                    completed: false,
+                },
+            );
+        }
+        Msg::ToggleTodo(todo_id) => {
+            if let Some(todo) = data.todos.get_mut(&todo_id) {
+                todo.completed = !todo.completed;
+            }
+        }
+        Msg::RemoveTodo(todo_id) => {
+            data.todos.shift_remove(&todo_id);
+        }
 
-    fn toggle_edit(&mut self, idx: usize) {
-        let filter = self.filter.clone();
-        let mut entries = self
-            .entries
-            .iter_mut()
-            .filter(|e| filter.fit(e))
-            .collect::<Vec<_>>();
-        let entry = entries.get_mut(idx).unwrap();
-        entry.editing = !entry.editing;
-    }
+        Msg::StartTodoEdit(todo_id) => {
+            if let Some(todo) = data.todos.get(&todo_id) {
+                data.editing_todo = Some({
+                    EditingTodo {
+                        id: todo_id,
+                        title: todo.title.clone(),
+                    }
+                });
+            }
 
-    fn complete_edit(&mut self, idx: usize, val: String) {
-        let filter = self.filter.clone();
-        let mut entries = self
-            .entries
-            .iter_mut()
-            .filter(|e| filter.fit(e))
-            .collect::<Vec<_>>();
-        let entry = entries.get_mut(idx).unwrap();
-        entry.description = val;
-        entry.editing = !entry.editing;
+            let input = model.refs.editing_todo_input.clone();
+            orders.after_next_render(move |_| {
+                input.get().expect("get `editing_todo_input`").select();
+            });
+        }
+        Msg::EditingTodoTitleChanged(title) => {
+            if let Some(ref mut editing_todo) = data.editing_todo {
+                editing_todo.title = title
+            }
+        }
+        Msg::SaveEditingTodo => {
+            if let Some(editing_todo) = data.editing_todo.take() {
+                if let Some(todo) = data.todos.get_mut(&editing_todo.id) {
+                    todo.title = editing_todo.title;
+                }
+            }
+        }
+        Msg::CancelTodoEdit => {
+            data.editing_todo = None;
+        }
     }
+}
 
-    fn remove(&mut self, idx: usize) {
-        let idx = {
-            let filter = self.filter.clone();
-            let entries = self
-                .entries
-                .iter()
-                .enumerate()
-                .filter(|&(_, e)| filter.fit(e))
-                .collect::<Vec<_>>();
-            let &(idx, _) = entries.get(idx).unwrap();
-            idx
-        };
-        self.entries.remove(idx);
-    }
+fn view(model: &Model) -> impl IntoNodes<Msg> {
+    let data = &model.data;
+    nodes![
+        view_header(&data.new_todo_title),
+        if data.todos.is_empty() {
+            vec![]
+        } else {
+            vec![
+                view_main(
+                    &data.todos,
+                    data.filter,
+                    &data.editing_todo,
+                    &model.refs.editing_todo_input,
+                ),
+                view_footer(&data.todos, data.filter),
+            ]
+        },
+    ]
+}
+
+fn view_header(new_todo_title: &str) -> Node<Msg> {
+    header![
+        C!["header"],
+        h1!["todos"],
+        input![
+            C!["new-todo"],
+            attrs! {
+                At::Placeholder => "What needs to be done?";
+                At::AutoFocus => true.as_at_value();
+                At::Value => new_todo_title;
+            },
+            keyboard_ev(Ev::KeyDown, |keyboard_event| {
+                IF!(keyboard_event.key_code() == ENTER_KEY => Msg::CreateNewTodo)
+            }),
+            input_ev(Ev::Input, Msg::NewTodoTitleChanged),
+        ]
+    ]
+}
+
+fn view_main(
+    todos: &IndexMap<TodoId, Todo>,
+    filter: TodoFilter,
+    editing_todo: &Option<EditingTodo>,
+    editing_todo_input: &ElRef<HtmlInputElement>,
+) -> Node<Msg> {
+    let all_todos_completed = todos.values().all(|todo| todo.completed);
+
+    section![
+        C!["main"],
+        input![
+            id!("toggle-all"),
+            C!["toggle-all"],
+            attrs! {
+                At::Type => "checkbox",
+                At::Checked => all_todos_completed.as_at_value(),
+            },
+            ev(Ev::Click, |_| Msg::ToggleAll)
+        ],
+        label![attrs! {At::For => "toggle-all"}, "Mark all as complete"],
+        view_todos(todos, filter, editing_todo, editing_todo_input)
+    ]
+}
+
+fn view_todos(
+    todos: &IndexMap<TodoId, Todo>,
+    filter: TodoFilter,
+    editing_todo: &Option<EditingTodo>,
+    editing_todo_input: &ElRef<HtmlInputElement>,
+) -> Node<Msg> {
+    ul![
+        C!["todo-list"],
+        todos.iter().filter_map(|(todo_id, todo)| {
+            let show_todo = match filter {
+                TodoFilter::All => true,
+                TodoFilter::Active => !todo.completed,
+                TodoFilter::Completed => todo.completed,
+            };
+            IF!(show_todo => view_todo(todo_id, todo, editing_todo, editing_todo_input))
+        })
+    ]
+}
+
+#[allow(clippy::cognitive_complexity)]
+fn view_todo(
+    todo_id: &TodoId,
+    todo: &Todo,
+    editing_todo: &Option<EditingTodo>,
+    editing_todo_input: &ElRef<HtmlInputElement>,
+) -> Node<Msg> {
+    li![
+        C![
+            IF!(todo.completed => "completed"),
+            IF!(matches!(editing_todo, Some(editing_todo) if &editing_todo.id == todo_id) => "editing"),
+        ],
+        div![
+            C!["view"],
+            input![
+                C!["toggle"],
+                attrs! {
+                   At::Type => "checkbox",
+                   At::Checked => todo.completed.as_at_value()
+                },
+                ev(
+                    Ev::Change,
+                    enc!((todo_id) move |_| Msg::ToggleTodo(todo_id))
+                )
+            ],
+            label![
+                ev(
+                    Ev::DblClick,
+                    enc!((todo_id) move |_| Msg::StartTodoEdit(todo_id))
+                ),
+                &todo.title
+            ],
+            button![
+                C!["destroy"],
+                ev(Ev::Click, enc!((todo_id) move |_| Msg::RemoveTodo(todo_id)))
+            ]
+        ],
+        match editing_todo {
+            Some(editing_todo) if &editing_todo.id == todo_id => {
+                input![
+                    el_ref(editing_todo_input),
+                    C!["edit"],
+                    attrs! {At::Value => editing_todo.title},
+                    ev(Ev::Blur, |_| Msg::SaveEditingTodo),
+                    input_ev(Ev::Input, Msg::EditingTodoTitleChanged),
+                    keyboard_ev(Ev::KeyDown, |keyboard_event| {
+                        match keyboard_event.key_code() {
+                            ENTER_KEY => Some(Msg::SaveEditingTodo),
+                            ESC_KEY => Some(Msg::CancelTodoEdit),
+                            _ => None,
+                        }
+                    }),
+                ]
+            }
+            _ => empty![],
+        }
+    ]
+}
+
+fn view_footer(todos: &IndexMap<TodoId, Todo>, filter: TodoFilter) -> Node<Msg> {
+    let active_count = todos.values().filter(|todo| !todo.completed).count();
+
+    footer![
+        C!["footer"],
+        span![
+            C!["todo-count"],
+            strong![active_count.to_string()],
+            span![format!(
+                " item{} left",
+                if active_count == 1 { "" } else { "s" }
+            )]
+        ],
+        view_filters(filter),
+        view_clear_completed(todos),
+    ]
+}
+
+fn view_filters(filter: TodoFilter) -> Node<Msg> {
+    ul![
+        C!["filters"],
+        view_filter("All", TodoFilter::All, filter),
+        view_filter("Active", TodoFilter::Active, filter),
+        view_filter("Completed", TodoFilter::Completed, filter),
+    ]
+}
+
+fn view_filter(title: &str, filter: TodoFilter, current_filter: TodoFilter) -> Node<Msg> {
+    li![a![
+        C![IF!(filter == current_filter => "selected")],
+        attrs! {
+            At::Href => format!("/{}", filter.to_url_path())
+        },
+        style! {St::Cursor => "pointer"},
+        title
+    ]]
+}
+
+fn view_clear_completed(todos: &IndexMap<TodoId, Todo>) -> Option<Node<Msg>> {
+    let completed_count = todos.values().filter(|todo| todo.completed).count();
+
+    IF!(completed_count > 0 => {
+        button![
+            C!["clear-completed"],
+            ev(Ev::Click, |_| Msg::ClearCompleted),
+            format!("Clear completed ({})", completed_count),
+        ]
+    })
 }
 
 #[wasm_bindgen(start)]
-pub fn run_app() {
-    App::<Model>::new().mount_to_body();
+pub fn start() {
+    App::start("app", init, update, view);
 }
