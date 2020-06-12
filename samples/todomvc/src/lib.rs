@@ -174,7 +174,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
 
         ClearCompletedTodos => {
-            for (id, todo) in &mut data.todos {
+            for (id, todo) in &data.todos {
                 if todo.completed {
                     let vars = delete_todo::Variables { id: id.to_string() };
                     orders.perform_cmd(async {
@@ -214,7 +214,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         NewTodoCreated(error) => log!(error),
 
         ToggleTodo(todo_id) => {
-            if let Some(todo) = data.todos.get_mut(&todo_id) {
+            if let Some(todo) = data.todos.get(&todo_id) {
                 let vars = update_todo::Variables {
                     id: todo_id.to_string(),
                     title: Some(todo.title.clone()),
@@ -241,18 +241,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         ToggleAll => {
             let target_state = !data.todos.values().all(|todo| todo.completed);
 
-            for (id, todo) in &mut data.todos {
+            for (id, todo) in &data.todos {
                 if todo.completed != target_state {
-                    let vars = update_todo::Variables {
-                        id: id.to_string(),
-                        title: Some(todo.title.clone()),
-                        completed: Some(target_state),
-                    };
-                    orders.perform_cmd(async {
-                        let request = UpdateTodo::build_query(vars);
-                        let response = send_graphql_request(&request).await;
-                        TodoToggled(response)
-                    });
+                    let cmd = ToggleTodo(*id);
+                    orders.perform_cmd(async { cmd });
                 }
             }
         }
