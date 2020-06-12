@@ -135,6 +135,7 @@ enum Msg {
     StartTodoEdit(TodoId),
     EditingTodoTitleChanged(String),
     SaveEditingTodo,
+    EditingTodoSaved(fetch::Result<Response<update_todo::ResponseData>>),
     CancelTodoEdit,
 }
 
@@ -264,9 +265,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             Ok(deleted_id) => {
                 data.todos.shift_remove(&deleted_id);
             }
-            Err(e) => {
-                log!("Failed to parse id of deleted todo as Uuid::V4 ({:?})", e);
-            }
+            Err(e) => log!("Failed to parse id of deleted todo as Uuid::V4 ({:?})", e),
         },
         TodoRemoved(error) => log!(error),
 
@@ -291,12 +290,31 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
         SaveEditingTodo => {
-            if let Some(editing_todo) = data.editing_todo.take() {
-                if let Some(todo) = data.todos.get_mut(&editing_todo.id) {
-                    todo.title = editing_todo.title;
-                }
+            if let Some(todo) = data.editing_todo.take() {
+                let vars = update_todo::Variables {
+                    id: todo.id.to_string(),
+                    title: Some(todo.title),
+                    completed: None,
+                };
+                orders.perform_cmd(async {
+                    let request = UpdateTodo::build_query(vars);
+                    let response = send_graphql_request(&request).await;
+                    EditingTodoSaved(response)
+                });
             }
         }
+        EditingTodoSaved(Ok(Response {
+            data: Some(response_data),
+            ..
+        })) => match Uuid::parse_str(response_data.update_todo.id.as_str()) {
+            Ok(updated_id) => {
+                if let Some(todo) = data.todos.get_mut(&updated_id) {
+                    todo.title = response_data.update_todo.title;
+                }
+            }
+            Err(e) => log!("Failed to parse id of updated todo as Uuid::V4 ({:?})", e),
+        },
+        EditingTodoSaved(error) => log!(error),
         CancelTodoEdit => {
             data.editing_todo = None;
         }
