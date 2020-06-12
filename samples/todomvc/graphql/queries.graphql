@@ -6,3 +6,9 @@ query GetAll {
     order
   }
 }
+
+mutation DeleteOne($id: ID) {
+  deleteTodo(id: $id) {
+    id
+  }
+}

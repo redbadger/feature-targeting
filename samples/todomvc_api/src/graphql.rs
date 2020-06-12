@@ -102,9 +102,10 @@ impl MutationRoot {
         Ok(todo.into())
     }
 
-    #[field(desc = "Delete a todo (returns the number of todos deleted: 1 or 0)")]
-    async fn delete_todo(&self, context: &Context<'_>, id: ID) -> FieldResult<i32> {
-        Ok(db::Todo::delete(Uuid::parse_str(id.as_str())?, &context.data()).await? as i32)
+    #[field(desc = "Delete a todo (returns the deleted todo)")]
+    async fn delete_todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
+        let todo = db::Todo::delete(Uuid::parse_str(id.as_str())?, &context.data()).await?;
+        Ok(todo.into())
     }
 }
 

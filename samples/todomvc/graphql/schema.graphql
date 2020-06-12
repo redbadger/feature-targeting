@@ -10,8 +10,8 @@ type MutationRoot {
   createTodo(todo: NewTodo!): Todo!
   # Update a todo (returns the updated todo)
   updateTodo(id: ID!, todo: UpdateTodo!): Todo!
-  # Delete a todo (returns the number of todos deleted: 1 or 0)
-  deleteTodo(id: ID!): Int!
+  # Delete a todo (returns the deleted todo)
+  deleteTodo(id: ID!): Todo!
 }
 
 input NewTodo {
@@ -43,3 +43,4 @@ input UpdateTodo {
   completed: Boolean
   order: Int
 }
+

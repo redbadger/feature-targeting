@@ -25,6 +25,7 @@ macro_rules! generate_query {
     };
 }
 generate_query!(GetAll);
+generate_query!(DeleteOne);
 
 async fn send_graphql_request<V, T>(variables: &V) -> fetch::Result<T>
 where
@@ -47,8 +48,9 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .notify(subs::UrlChanged(url));
 
     orders.perform_cmd(async {
-        let todos = send_graphql_request(&GetAll::build_query(get_all::Variables)).await;
-        Msg::TodosFetched(todos)
+        let request = GetAll::build_query(get_all::Variables);
+        let response = send_graphql_request(&request).await;
+        Msg::TodosFetched(response)
     });
 
     Model {
@@ -120,7 +122,9 @@ enum Msg {
 
     CreateNewTodo,
     ToggleTodo(TodoId),
+
     RemoveTodo(TodoId),
+    TodoRemoved(fetch::Result<Response<delete_one::ResponseData>>),
 
     StartTodoEdit(TodoId),
     EditingTodoTitleChanged(String),
@@ -130,14 +134,15 @@ enum Msg {
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     let data = &mut model.data;
+    use Msg::*;
     match msg {
-        Msg::TodosFetched(Ok(Response {
+        TodosFetched(Ok(Response {
             data: Some(response_data),
             ..
         })) => {
             for todo in response_data.todos.iter() {
                 data.todos.insert(
-                    TodoId::new_v4(),
+                    Uuid::parse_str(todo.id.as_str()).expect("Cannot parse todo.id as Uuid::V4"),
                     Todo {
                         title: todo.title.clone(),
                         completed: todo.completed,
@@ -145,8 +150,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 );
             }
         }
-        Msg::TodosFetched(error) => log!(error),
-        Msg::UrlChanged(subs::UrlChanged(mut url)) => {
+        TodosFetched(error) => log!(error),
+
+        UrlChanged(subs::UrlChanged(mut url)) => {
             data.filter = match url.next_path_part() {
                 Some(path_part) if path_part == TodoFilter::Active.to_url_path() => {
                     TodoFilter::Active
@@ -157,13 +163,13 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 _ => TodoFilter::All,
             };
         }
-        Msg::NewTodoTitleChanged(title) => {
+        NewTodoTitleChanged(title) => {
             data.new_todo_title = title;
         }
-        Msg::ClearCompleted => {
+        ClearCompleted => {
             data.todos.retain(|_, todo| !todo.completed);
         }
-        Msg::ToggleAll => {
+        ToggleAll => {
             let all_todos_completed = data.todos.values().all(|todo| todo.completed);
 
             for (_, todo) in &mut data.todos {
@@ -171,7 +177,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
 
-        Msg::CreateNewTodo => {
+        CreateNewTodo => {
             data.todos.insert(
                 TodoId::new_v4(),
                 Todo {
@@ -180,16 +186,34 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 },
             );
         }
-        Msg::ToggleTodo(todo_id) => {
+        ToggleTodo(todo_id) => {
             if let Some(todo) = data.todos.get_mut(&todo_id) {
                 todo.completed = !todo.completed;
             }
         }
-        Msg::RemoveTodo(todo_id) => {
-            data.todos.shift_remove(&todo_id);
-        }
 
-        Msg::StartTodoEdit(todo_id) => {
+        RemoveTodo(todo_id) => {
+            let id = Some(todo_id.to_string());
+            orders.perform_cmd(async {
+                let request = DeleteOne::build_query(delete_one::Variables { id });
+                let response = send_graphql_request(&request).await;
+                TodoRemoved(response)
+            });
+        }
+        TodoRemoved(Ok(Response {
+            data: Some(response_data),
+            ..
+        })) => match Uuid::parse_str(response_data.delete_todo.id.as_str()) {
+            Ok(deleted_id) => {
+                data.todos.shift_remove(&deleted_id);
+            }
+            Err(e) => {
+                log!("Failed to parse id of deleted todo as Uuid::V4 ({:?})", e);
+            }
+        },
+        TodoRemoved(error) => log!(error),
+
+        StartTodoEdit(todo_id) => {
             if let Some(todo) = data.todos.get(&todo_id) {
                 data.editing_todo = Some({
                     EditingTodo {
@@ -204,19 +228,19 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 input.get().expect("get `editing_todo_input`").select();
             });
         }
-        Msg::EditingTodoTitleChanged(title) => {
+        EditingTodoTitleChanged(title) => {
             if let Some(ref mut editing_todo) = data.editing_todo {
                 editing_todo.title = title
             }
         }
-        Msg::SaveEditingTodo => {
+        SaveEditingTodo => {
             if let Some(editing_todo) = data.editing_todo.take() {
                 if let Some(todo) = data.todos.get_mut(&editing_todo.id) {
                     todo.title = editing_todo.title;
                 }
             }
         }
-        Msg::CancelTodoEdit => {
+        CancelTodoEdit => {
             data.editing_todo = None;
         }
     }
