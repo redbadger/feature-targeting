@@ -19,3 +19,11 @@ mutation CreateTodo($title: String) {
     completed
   }
 }
+
+mutation UpdateTodo($id: ID!, $title: String, $completed: Boolean) {
+  updateTodo(id: $id, todo: { title: $title, completed: $completed }) {
+    id
+    title
+    completed
+  }
+}

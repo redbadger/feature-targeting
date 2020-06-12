@@ -27,6 +27,7 @@ macro_rules! generate_query {
 generate_query!(GetAll);
 generate_query!(DeleteTodo);
 generate_query!(CreateTodo);
+generate_query!(UpdateTodo);
 
 async fn send_graphql_request<V, T>(variables: &V) -> fetch::Result<T>
 where
@@ -118,13 +119,14 @@ enum Msg {
     UrlChanged(subs::UrlChanged),
 
     NewTodoTitleChanged(String),
-    ClearCompleted,
-    ToggleAll,
+    ClearCompletedTodos,
 
     CreateNewTodo,
     NewTodoCreated(fetch::Result<Response<create_todo::ResponseData>>),
 
     ToggleTodo(TodoId),
+    TodoToggled(fetch::Result<Response<update_todo::ResponseData>>),
+    ToggleAll,
 
     RemoveTodo(TodoId),
     TodoRemoved(fetch::Result<Response<delete_todo::ResponseData>>),
@@ -169,21 +171,16 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         NewTodoTitleChanged(title) => {
             data.new_todo_title = title;
         }
-        ClearCompleted => {
+        ClearCompletedTodos => {
             data.todos.retain(|_, todo| !todo.completed);
-        }
-        ToggleAll => {
-            let all_todos_completed = data.todos.values().all(|todo| todo.completed);
-
-            for (_, todo) in &mut data.todos {
-                todo.completed = !all_todos_completed
-            }
         }
 
         CreateNewTodo => {
-            let title = Some(mem::take(&mut data.new_todo_title));
+            let vars = create_todo::Variables {
+                title: Some(mem::take(&mut data.new_todo_title)),
+            };
             orders.perform_cmd(async {
-                let request = CreateTodo::build_query(create_todo::Variables { title });
+                let request = CreateTodo::build_query(vars);
                 let response = send_graphql_request(&request).await;
                 NewTodoCreated(response)
             });
@@ -194,8 +191,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         })) => {
             let todo = response_data.create_todo;
             data.todos.insert(
-                Uuid::parse_str(&todo.id)
-                    .expect("Failed to parse id of deleted todo as Uuid::V4 ({:?})"),
+                Uuid::parse_str(&todo.id).expect("Failed to parse id of deleted todo as Uuid::V4"),
                 Todo {
                     title: todo.title,
                     completed: todo.completed,
@@ -206,7 +202,45 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
         ToggleTodo(todo_id) => {
             if let Some(todo) = data.todos.get_mut(&todo_id) {
+                let vars = update_todo::Variables {
+                    id: todo_id.to_string(),
+                    title: Some(todo.title.clone()),
+                    completed: Some(!todo.completed),
+                };
+                orders.perform_cmd(async {
+                    let request = UpdateTodo::build_query(vars);
+                    let response = send_graphql_request(&request).await;
+                    TodoToggled(response)
+                });
+            }
+        }
+        TodoToggled(Ok(Response {
+            data: Some(response_data),
+            ..
+        })) => {
+            let id = Uuid::parse_str(&response_data.update_todo.id)
+                .expect("Failed to parse id of deleted todo as Uuid::V4");
+            if let Some(todo) = data.todos.get_mut(&id) {
                 todo.completed = !todo.completed;
+            }
+        }
+        TodoToggled(error) => log!(error),
+        ToggleAll => {
+            let target_state = !data.todos.values().all(|todo| todo.completed);
+
+            for (id, todo) in &mut data.todos {
+                if todo.completed != target_state {
+                    let vars = update_todo::Variables {
+                        id: id.to_string(),
+                        title: Some(todo.title.clone()),
+                        completed: Some(target_state),
+                    };
+                    orders.perform_cmd(async {
+                        let request = UpdateTodo::build_query(vars);
+                        let response = send_graphql_request(&request).await;
+                        TodoToggled(response)
+                    });
+                }
             }
         }
 
@@ -449,7 +483,7 @@ fn view_clear_completed(todos: &IndexMap<TodoId, Todo>) -> Option<Node<Msg>> {
     IF!(completed_count > 0 => {
         button![
             C!["clear-completed"],
-            ev(Ev::Click, |_| Msg::ClearCompleted),
+            ev(Ev::Click, |_| Msg::ClearCompletedTodos),
             format!("Clear completed ({})", completed_count),
         ]
     })
