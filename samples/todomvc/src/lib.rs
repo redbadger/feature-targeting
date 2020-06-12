@@ -24,7 +24,7 @@ macro_rules! generate_query {
         struct $query;
     };
 }
-generate_query!(GetAll);
+generate_query!(GetTodos);
 generate_query!(DeleteTodo);
 generate_query!(CreateTodo);
 generate_query!(UpdateTodo);
@@ -50,7 +50,7 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .notify(subs::UrlChanged(url));
 
     orders.perform_cmd(async {
-        let request = GetAll::build_query(get_all::Variables);
+        let request = GetTodos::build_query(get_todos::Variables);
         let response = send_graphql_request(&request).await;
         Msg::TodosFetched(response)
     });
@@ -115,7 +115,7 @@ impl TodoFilter {
 }
 
 enum Msg {
-    TodosFetched(fetch::Result<Response<get_all::ResponseData>>),
+    TodosFetched(fetch::Result<Response<get_todos::ResponseData>>),
     UrlChanged(subs::UrlChanged),
 
     NewTodoTitleChanged(String),
