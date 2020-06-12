@@ -16,7 +16,6 @@ type MutationRoot {
 
 input NewTodo {
   title: String!
-  order: Int
 }
 
 type QueryRoot {
@@ -34,13 +33,9 @@ type Todo {
   title: String!
   # Is the todo completed?
   completed: Boolean!
-  # The order of the todo
-  order: Int
 }
 
 input UpdateTodo {
   title: String
   completed: Boolean
-  order: Int
 }
-

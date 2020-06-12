@@ -3,12 +3,19 @@ query GetAll {
     id
     title
     completed
-    order
   }
 }
 
-mutation DeleteOne($id: ID) {
+mutation DeleteTodo($id: ID) {
   deleteTodo(id: $id) {
     id
+  }
+}
+
+mutation CreateTodo($title: String) {
+  createTodo(todo: { title: $title }) {
+    id
+    title
+    completed
   }
 }

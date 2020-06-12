@@ -1,6 +1,5 @@
 SELECT id,
     title,
-    completed,
-    item_order as order
+    completed
 FROM todos
 WHERE id = $1

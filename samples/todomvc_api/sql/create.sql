@@ -1,6 +1,5 @@
-INSERT INTO todos (title, item_order)
-VALUES ($1, $2)
+INSERT INTO todos (title)
+VALUES ($1)
 RETURNING id,
     title,
-    completed,
-    item_order AS order
+    completed

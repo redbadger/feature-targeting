@@ -6,7 +6,6 @@ pub struct Todo {
     pub id: Uuid,
     pub title: String,
     pub completed: bool,
-    pub order: Option<i32>,
 }
 
 impl Todo {
@@ -26,8 +25,8 @@ impl Todo {
         Ok(todo)
     }
 
-    pub async fn create(title: String, order: Option<i32>, pool: &PgPool) -> Result<Todo> {
-        let todo = sqlx::query_file_as!(Todo, "sql/create.sql", title, order,)
+    pub async fn create(title: String, pool: &PgPool) -> Result<Todo> {
+        let todo = sqlx::query_file_as!(Todo, "sql/create.sql", title)
             .fetch_one(pool)
             .await?;
 
@@ -38,10 +37,9 @@ impl Todo {
         id: Uuid,
         title: Option<String>,
         completed: Option<bool>,
-        order: Option<i32>,
         pool: &PgPool,
     ) -> Result<Todo> {
-        let todo = sqlx::query_file_as!(Todo, "sql/update.sql", title, completed, order, id)
+        let todo = sqlx::query_file_as!(Todo, "sql/update.sql", title, completed, id)
             .fetch_one(pool)
             .await?;
 

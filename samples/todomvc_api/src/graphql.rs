@@ -15,8 +15,6 @@ pub struct Todo {
     title: String,
     #[field(desc = "Is the todo completed?")]
     completed: bool,
-    #[field(desc = "The order of the todo")]
-    order: Option<i32>,
 }
 
 impl From<db::Todo> for Todo {
@@ -25,7 +23,6 @@ impl From<db::Todo> for Todo {
             id: d.id.into(),
             title: d.title,
             completed: d.completed,
-            order: d.order,
         }
     }
 }
@@ -33,14 +30,12 @@ impl From<db::Todo> for Todo {
 #[InputObject]
 struct NewTodo {
     title: String,
-    order: Option<i32>,
 }
 
 #[InputObject]
 struct UpdateTodo {
     title: Option<String>,
     completed: Option<bool>,
-    order: Option<i32>,
 }
 
 pub struct State {
@@ -80,7 +75,7 @@ pub struct MutationRoot;
 impl MutationRoot {
     #[field(desc = "Create a new todo (returns the created todo)")]
     async fn create_todo(&self, context: &Context<'_>, todo: NewTodo) -> FieldResult<Todo> {
-        let todo = db::Todo::create(todo.title, todo.order, &context.data()).await?;
+        let todo = db::Todo::create(todo.title, &context.data()).await?;
         Ok(todo.into())
     }
 
@@ -95,7 +90,6 @@ impl MutationRoot {
             Uuid::parse_str(id.as_str())?,
             todo.title,
             todo.completed,
-            todo.order,
             &context.data(),
         )
         .await?;
