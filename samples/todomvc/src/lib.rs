@@ -119,6 +119,7 @@ enum Msg {
     UrlChanged(subs::UrlChanged),
 
     NewTodoTitleChanged(String),
+
     ClearCompletedTodos,
 
     CreateNewTodo,
@@ -171,19 +172,31 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         NewTodoTitleChanged(title) => {
             data.new_todo_title = title;
         }
+
         ClearCompletedTodos => {
-            data.todos.retain(|_, todo| !todo.completed);
+            for (id, todo) in &mut data.todos {
+                if todo.completed {
+                    let vars = delete_todo::Variables { id: id.to_string() };
+                    orders.perform_cmd(async {
+                        let request = DeleteTodo::build_query(vars);
+                        let response = send_graphql_request(&request).await;
+                        TodoRemoved(response)
+                    });
+                }
+            }
         }
 
         CreateNewTodo => {
-            let vars = create_todo::Variables {
-                title: Some(mem::take(&mut data.new_todo_title)),
-            };
-            orders.perform_cmd(async {
-                let request = CreateTodo::build_query(vars);
-                let response = send_graphql_request(&request).await;
-                NewTodoCreated(response)
-            });
+            if !data.new_todo_title.is_empty() {
+                let vars = create_todo::Variables {
+                    title: mem::take(&mut data.new_todo_title),
+                };
+                orders.perform_cmd(async {
+                    let request = CreateTodo::build_query(vars);
+                    let response = send_graphql_request(&request).await;
+                    NewTodoCreated(response)
+                });
+            }
         }
         NewTodoCreated(Ok(Response {
             data: Some(response_data),
@@ -245,7 +258,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
 
         RemoveTodo(todo_id) => {
-            let id = Some(todo_id.to_string());
+            let id = todo_id.to_string();
             orders.perform_cmd(async {
                 let request = DeleteTodo::build_query(delete_todo::Variables { id });
                 let response = send_graphql_request(&request).await;

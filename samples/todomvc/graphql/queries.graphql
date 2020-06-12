@@ -6,13 +6,13 @@ query GetAll {
   }
 }
 
-mutation DeleteTodo($id: ID) {
+mutation DeleteTodo($id: ID!) {
   deleteTodo(id: $id) {
     id
   }
 }
 
-mutation CreateTodo($title: String) {
+mutation CreateTodo($title: String!) {
   createTodo(todo: { title: $title }) {
     id
     title
