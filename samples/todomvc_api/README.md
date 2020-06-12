@@ -30,6 +30,7 @@ _Note that a local instance of PostgreSQL is needed in order to compile._
 
       DATABASE_URL=postgres://${USERNAME}@localhost/todos
       psql -d "${DATABASE_URL}" -f ./schema.sql
+      psql -d "${DATABASE_URL}" -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 
       echo "DATABASE_URL=${DATABASE_URL}" > .env
   )

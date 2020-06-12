@@ -1,9 +1,9 @@
 use anyhow::Result;
-use sqlx::PgPool;
+use sqlx::{types::Uuid, PgPool};
 
 #[derive(Clone)]
 pub struct Todo {
-    pub id: i32,
+    pub id: Uuid,
     pub title: String,
     pub completed: bool,
     pub order: Option<i32>,
@@ -18,7 +18,7 @@ impl Todo {
         Ok(records)
     }
 
-    pub async fn find_by_id(id: i32, pool: &PgPool) -> Result<Todo> {
+    pub async fn find_by_id(id: Uuid, pool: &PgPool) -> Result<Todo> {
         let todo = sqlx::query_file_as!(Todo, "sql/find_by_id.sql", id,)
             .fetch_one(pool)
             .await?;
@@ -35,7 +35,7 @@ impl Todo {
     }
 
     pub async fn update(
-        id: i32,
+        id: Uuid,
         title: Option<String>,
         completed: Option<bool>,
         order: Option<i32>,
@@ -48,7 +48,7 @@ impl Todo {
         Ok(todo)
     }
 
-    pub async fn delete(id: i32, pool: &PgPool) -> Result<u64> {
+    pub async fn delete(id: Uuid, pool: &PgPool) -> Result<u64> {
         let count = sqlx::query_file!("sql/delete.sql", id)
             .execute(pool)
             .await?;

@@ -1,15 +1,16 @@
 use super::db;
 use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
-    Context, EmptySubscription, FieldResult, InputObject, Object, Schema, SimpleObject,
+    Context, EmptySubscription, FieldResult, InputObject, Object, Schema, SimpleObject, ID,
 };
 use sqlx::{PgConnection as Connection, Pool};
 use tide::{http::mime, Body, Request, Response, StatusCode};
+use uuid::Uuid;
 
 #[SimpleObject(desc = "A todo")]
 pub struct Todo {
     #[field(desc = "The id of the todo")]
-    id: Option<i32>,
+    id: ID,
     #[field(desc = "The title of the todo")]
     title: String,
     #[field(desc = "Is the todo completed?")]
@@ -21,7 +22,7 @@ pub struct Todo {
 impl From<db::Todo> for Todo {
     fn from(d: db::Todo) -> Self {
         Self {
-            id: Some(d.id),
+            id: d.id.into(),
             title: d.title,
             completed: d.completed,
             order: d.order,
@@ -67,8 +68,8 @@ impl QueryRoot {
     }
 
     #[field(desc = "Get Todo by id")]
-    async fn todo(&self, context: &Context<'_>, id: i32) -> FieldResult<Todo> {
-        let todo = db::Todo::find_by_id(id as i32, &context.data()).await?;
+    async fn todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
+        let todo = db::Todo::find_by_id(Uuid::parse_str(id.as_str())?, &context.data()).await?;
         Ok(todo.into())
     }
 }
@@ -87,17 +88,23 @@ impl MutationRoot {
     async fn update_todo(
         &self,
         context: &Context<'_>,
-        id: i32,
+        id: ID,
         todo: UpdateTodo,
     ) -> FieldResult<Todo> {
-        let todo =
-            db::Todo::update(id, todo.title, todo.completed, todo.order, &context.data()).await?;
+        let todo = db::Todo::update(
+            Uuid::parse_str(id.as_str())?,
+            todo.title,
+            todo.completed,
+            todo.order,
+            &context.data(),
+        )
+        .await?;
         Ok(todo.into())
     }
 
     #[field(desc = "Delete a todo (returns the number of todos deleted: 1 or 0)")]
-    async fn delete_todo(&self, context: &Context<'_>, id: i32) -> FieldResult<i32> {
-        Ok(db::Todo::delete(id, &context.data()).await? as i32)
+    async fn delete_todo(&self, context: &Context<'_>, id: ID) -> FieldResult<i32> {
+        Ok(db::Todo::delete(Uuid::parse_str(id.as_str())?, &context.data()).await? as i32)
     }
 }
 

@@ -47,7 +47,8 @@ fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         .notify(subs::UrlChanged(url));
 
     orders.perform_cmd(async {
-        Msg::TodosFetched(send_graphql_request(&GetAll::build_query(get_all::Variables)).await)
+        let todos = send_graphql_request(&GetAll::build_query(get_all::Variables)).await;
+        Msg::TodosFetched(todos)
     });
 
     Model {

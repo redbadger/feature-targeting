@@ -12,5 +12,6 @@ dotenv = "0.15.0"
 env_logger = "0.7.1"
 http-types = "2.2.0"
 smol = "0.1.11"
-sqlx = { version = "0.3.5", features = [ "postgres", "macros" ] }
+sqlx = { version = "0.3.5", features = [ "postgres", "macros", "uuid" ] }
 tide = "0.10.0"
+uuid = "0.8.1"

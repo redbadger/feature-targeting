@@ -9,9 +9,9 @@ type MutationRoot {
   # Create a new todo (returns the created todo)
   createTodo(todo: NewTodo!): Todo!
   # Update a todo (returns the updated todo)
-  updateTodo(id: Int!, todo: UpdateTodo!): Todo!
+  updateTodo(id: ID!, todo: UpdateTodo!): Todo!
   # Delete a todo (returns the number of todos deleted: 1 or 0)
-  deleteTodo(id: Int!): Int!
+  deleteTodo(id: ID!): Int!
 }
 
 input NewTodo {
@@ -23,13 +23,13 @@ type QueryRoot {
   # Get all Todos
   todos: [Todo!]!
   # Get Todo by id
-  todo(id: Int!): Todo!
+  todo(id: ID!): Todo!
 }
 
 # A todo
 type Todo {
   # The id of the todo
-  id: Int
+  id: ID!
   # The title of the todo
   title: String!
   # Is the todo completed?
