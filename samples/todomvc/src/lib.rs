@@ -44,23 +44,6 @@ where
         .await
 }
 
-fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
-    orders
-        .subscribe(Msg::UrlChanged)
-        .notify(subs::UrlChanged(url));
-
-    orders.perform_cmd(async {
-        let request = GetTodos::build_query(get_todos::Variables);
-        let response = send_graphql_request(&request).await;
-        Msg::TodosFetched(response)
-    });
-
-    Model {
-        data: Data::default(),
-        refs: Refs::default(),
-    }
-}
-
 struct Model {
     data: Data,
     refs: Refs,
@@ -183,6 +166,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                         let response = send_graphql_request(&request).await;
                         TodoRemoved(response)
                     });
+                    orders.skip();
                 }
             }
         }
@@ -197,6 +181,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     let response = send_graphql_request(&request).await;
                     NewTodoCreated(response)
                 });
+                orders.skip();
             }
         }
         NewTodoCreated(Ok(Response {
@@ -226,6 +211,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     let response = send_graphql_request(&request).await;
                     TodoToggled(response)
                 });
+                orders.skip();
             }
         }
         TodoToggled(Ok(Response {
@@ -246,6 +232,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 if todo.completed != target_state {
                     let cmd = ToggleTodo(*id);
                     orders.perform_cmd(async { cmd });
+                    orders.skip();
                 }
             }
         }
@@ -257,6 +244,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let response = send_graphql_request(&request).await;
                 TodoRemoved(response)
             });
+            orders.skip();
         }
         TodoRemoved(Ok(Response {
             data: Some(response_data),
@@ -301,6 +289,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     let response = send_graphql_request(&request).await;
                     EditingTodoSaved(response)
                 });
+                orders.skip();
             }
         }
         EditingTodoSaved(Ok(Response {
@@ -512,7 +501,25 @@ fn view_clear_completed(todos: &IndexMap<TodoId, Todo>) -> Option<Node<Msg>> {
     })
 }
 
+fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
+    orders.perform_cmd(async {
+        let request = GetTodos::build_query(get_todos::Variables);
+        let response = send_graphql_request(&request).await;
+        Msg::TodosFetched(response)
+    });
+    orders
+        .subscribe(Msg::UrlChanged)
+        .notify(subs::UrlChanged(url));
+
+    AfterMount::new(Model {
+        data: Data::default(),
+        refs: Refs::default(),
+    })
+}
+
 #[wasm_bindgen(start)]
 pub fn start() {
-    App::start("app", init, update, view);
+    App::builder(update, view)
+        .after_mount(after_mount)
+        .build_and_start();
 }
