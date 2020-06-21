@@ -1,0 +1,10 @@
+.auth-text {
+  text-align: center;
+  padding-top: 1em;
+  font-size: 1.2em;
+}
+
+.auth-link {
+  cursor: pointer;
+  color: rgba(175, 47, 47, 0.58);
+}

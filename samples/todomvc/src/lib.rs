@@ -7,9 +7,13 @@ use std::mem;
 use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
+mod auth;
+
 const ENTER_KEY: u32 = 13;
 const ESC_KEY: u32 = 27;
 const API_URL: &str = "http://localhost:3030/graphql";
+const ACTIVE: &str = "active";
+const COMPLETED: &str = "completed";
 
 type TodoId = Uuid;
 
@@ -45,6 +49,7 @@ where
 }
 
 struct Model {
+    base_url: Url,
     data: Data,
     refs: Refs,
 }
@@ -55,11 +60,25 @@ struct Data {
     filter: TodoFilter,
     new_todo_title: String,
     editing_todo: Option<EditingTodo>,
+    user: Option<String>,
 }
 
 #[derive(Default)]
 struct Refs {
     editing_todo_input: ElRef<HtmlInputElement>,
+}
+
+struct_urls!();
+impl<'a> Urls<'a> {
+    pub fn home(self) -> Url {
+        self.base_url()
+    }
+    pub fn active(self) -> Url {
+        self.base_url().add_hash_path_part(ACTIVE)
+    }
+    pub fn completed(self) -> Url {
+        self.base_url().add_hash_path_part(COMPLETED)
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -91,8 +110,8 @@ impl TodoFilter {
     fn to_url_path(self) -> &'static str {
         match self {
             Self::All => "",
-            Self::Active => "active",
-            Self::Completed => "completed",
+            Self::Active => ACTIVE,
+            Self::Completed => COMPLETED,
         }
     }
 }
@@ -120,6 +139,10 @@ enum Msg {
     SaveEditingTodo,
     EditingTodoSaved(fetch::Result<Response<update_todo::ResponseData>>),
     CancelTodoEdit,
+
+    Login(),
+    LoggedIn(Option<auth::Claims>),
+    Logout(),
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -150,7 +173,23 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 Some(path_part) if path_part == TodoFilter::Completed.to_url_path() => {
                     TodoFilter::Completed
                 }
-                _ => TodoFilter::All,
+                _ => {
+                    let url = url.to_string();
+                    let url = url.strip_prefix("/#").unwrap_or("");
+                    if let Ok(auth_response) = serde_urlencoded::from_str::<auth::AuthResponse>(url)
+                    {
+                        let token = auth_response.id_token;
+                        orders.perform_cmd(async move {
+                            auth::decode_jwt(token.as_str())
+                                .await
+                                .map_err(|e| error!(e))
+                                .map_or_else(|_| LoggedIn(None), |c| LoggedIn(Some(c)))
+                        });
+                        data.filter
+                    } else {
+                        TodoFilter::All
+                    }
+                }
             };
         }
         NewTodoTitleChanged(title) => {
@@ -161,12 +200,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             for (id, todo) in &data.todos {
                 if todo.completed {
                     let vars = delete_todo::Variables { id: id.to_string() };
-                    orders.perform_cmd(async {
+                    orders.skip().perform_cmd(async {
                         let request = DeleteTodo::build_query(vars);
                         let response = send_graphql_request(&request).await;
                         TodoRemoved(response)
                     });
-                    orders.skip();
                 }
             }
         }
@@ -176,12 +214,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let vars = create_todo::Variables {
                     title: mem::take(&mut data.new_todo_title),
                 };
-                orders.perform_cmd(async {
+                orders.skip().perform_cmd(async {
                     let request = CreateTodo::build_query(vars);
                     let response = send_graphql_request(&request).await;
                     NewTodoCreated(response)
                 });
-                orders.skip();
             }
         }
         NewTodoCreated(Ok(Response {
@@ -206,12 +243,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     title: Some(todo.title.clone()),
                     completed: Some(!todo.completed),
                 };
-                orders.perform_cmd(async {
+                orders.skip().perform_cmd(async {
                     let request = UpdateTodo::build_query(vars);
                     let response = send_graphql_request(&request).await;
                     TodoToggled(response)
                 });
-                orders.skip();
             }
         }
         TodoToggled(Ok(Response {
@@ -231,20 +267,18 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             for (id, todo) in &data.todos {
                 if todo.completed != target_state {
                     let cmd = ToggleTodo(*id);
-                    orders.perform_cmd(async { cmd });
-                    orders.skip();
+                    orders.skip().perform_cmd(async { cmd });
                 }
             }
         }
 
         RemoveTodo(todo_id) => {
             let id = todo_id.to_string();
-            orders.perform_cmd(async {
+            orders.skip().perform_cmd(async {
                 let request = DeleteTodo::build_query(delete_todo::Variables { id });
                 let response = send_graphql_request(&request).await;
                 TodoRemoved(response)
             });
-            orders.skip();
         }
         TodoRemoved(Ok(Response {
             data: Some(response_data),
@@ -284,12 +318,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     title: Some(todo.title),
                     completed: None,
                 };
-                orders.perform_cmd(async {
+                orders.skip().perform_cmd(async {
                     let request = UpdateTodo::build_query(vars);
                     let response = send_graphql_request(&request).await;
                     EditingTodoSaved(response)
                 });
-                orders.skip();
             }
         }
         EditingTodoSaved(Ok(Response {
@@ -307,13 +340,36 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         CancelTodoEdit => {
             data.editing_todo = None;
         }
+
+        Login() => {
+            if let Ok(auth_url) = auth::login() {
+                window()
+                    .open_with_url_and_target(auth_url.as_str(), "_self")
+                    .expect("couldn't open window");
+            }
+            orders.skip();
+        }
+        LoggedIn(Some(claims)) => {
+            data.user = Some(claims.name);
+            let url = Urls::new(&model.base_url).home();
+            orders.perform_cmd(async move { url.go_and_replace() });
+        }
+        LoggedIn(None) => {
+            data.user = None;
+        }
+
+        Logout() => {
+            if let Ok(()) = auth::logout() {
+                data.user = None;
+            }
+        }
     }
 }
 
 fn view(model: &Model) -> impl IntoNodes<Msg> {
     let data = &model.data;
     nodes![
-        view_header(&data.new_todo_title),
+        view_header(&data.new_todo_title, &data.user),
         if data.todos.is_empty() {
             vec![]
         } else {
@@ -330,9 +386,10 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
     ]
 }
 
-fn view_header(new_todo_title: &str) -> Node<Msg> {
+fn view_header(new_todo_title: &str, user: &Option<String>) -> Node<Msg> {
     header![
         C!["header"],
+        view_nav(user),
         h1!["todos"],
         input![
             C!["new-todo"],
@@ -346,6 +403,32 @@ fn view_header(new_todo_title: &str) -> Node<Msg> {
             }),
             input_ev(Ev::Input, Msg::NewTodoTitleChanged),
         ]
+    ]
+}
+
+fn view_nav(user: &Option<String>) -> Node<Msg> {
+    nav![
+        C!["auth-text"],
+        if let Some(user) = user {
+            nodes![
+                span![format!("{} ", user)],
+                a![
+                    C!["auth-link"],
+                    mouse_ev(Ev::Click, |_| Msg::Logout()),
+                    "logout"
+                ]
+            ]
+        } else {
+            nodes![
+                span!["Please "],
+                a![
+                    C!["auth-link"],
+                    mouse_ev(Ev::Click, |_| Msg::Login()),
+                    "login"
+                ],
+                span![" to modify todos"]
+            ]
+        },
     ]
 }
 
@@ -509,9 +592,10 @@ fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
     });
     orders
         .subscribe(Msg::UrlChanged)
-        .notify(subs::UrlChanged(url));
+        .notify(subs::UrlChanged(url.clone()));
 
     AfterMount::new(Model {
+        base_url: url.to_hash_base_url(),
         data: Data::default(),
         refs: Refs::default(),
     })

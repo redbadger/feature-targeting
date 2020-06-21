@@ -10,11 +10,11 @@ pub struct Todo {
 
 impl Todo {
     pub async fn find_all(pool: &PgPool) -> Result<Vec<Todo>> {
-        let records = sqlx::query_file_as!(Todo, "sql/find_all.sql",)
+        let todos = sqlx::query_file_as!(Todo, "sql/find_all.sql",)
             .fetch_all(pool)
             .await?;
 
-        Ok(records)
+        Ok(todos)
     }
 
     pub async fn find_by_id(id: Uuid, pool: &PgPool) -> Result<Todo> {
