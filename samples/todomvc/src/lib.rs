@@ -14,6 +14,7 @@ const ESC_KEY: u32 = 27;
 const API_URL: &str = "http://localhost:3030/graphql";
 const ACTIVE: &str = "active";
 const COMPLETED: &str = "completed";
+const STORAGE_KEY: &str = "todomvc-session";
 
 type TodoId = Uuid;
 
@@ -174,21 +175,24 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     TodoFilter::Completed
                 }
                 _ => {
-                    let url = url.to_string();
-                    let url = url.strip_prefix("/#").unwrap_or("");
-                    if let Ok(auth_response) = serde_urlencoded::from_str::<auth::AuthResponse>(url)
-                    {
-                        let token = auth_response.id_token;
-                        orders.perform_cmd(async move {
-                            auth::decode_jwt(token.as_str())
-                                .await
-                                .map_err(|e| error!(e))
-                                .map_or_else(|_| LoggedIn(None), |c| LoggedIn(Some(c)))
-                        });
-                        data.filter
+                    if let Ok(auth_response) = LocalStorage::get(STORAGE_KEY) {
+                        if let Ok(claims) = auth::get_claims(&auth_response) {
+                            orders.perform_cmd(async move { LoggedIn(Some(claims)) });
+                        }
                     } else {
-                        TodoFilter::All
+                        let url = url.to_string();
+                        let url = url.strip_prefix("/#").unwrap_or("");
+                        if let Ok(auth_response) =
+                            serde_urlencoded::from_str::<auth::AuthResponse>(url)
+                        {
+                            if let Ok(claims) = auth::get_claims(&auth_response) {
+                                LocalStorage::insert(STORAGE_KEY, &auth_response)
+                                    .expect("problem storing value in local storage");
+                                orders.perform_cmd(async move { LoggedIn(Some(claims)) });
+                            }
+                        }
                     }
+                    TodoFilter::All
                 }
             };
         }
@@ -342,17 +346,18 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
 
         Login() => {
-            if let Ok(auth_url) = auth::login() {
+            if let Ok(auth_url) = auth::get_login_url() {
                 window()
-                    .open_with_url_and_target(auth_url.as_str(), "_self")
+                    .open_with_url_and_target(auth_url.to_string().as_str(), "_self")
                     .expect("couldn't open window");
             }
             orders.skip();
         }
         LoggedIn(Some(claims)) => {
             data.user = Some(claims.name);
-            let url = Urls::new(&model.base_url).home();
-            orders.perform_cmd(async move { url.go_and_replace() });
+            Url::new()
+                .set_path(model.base_url.hash_path())
+                .go_and_replace();
         }
         LoggedIn(None) => {
             data.user = None;
@@ -360,6 +365,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
         Logout() => {
             if let Ok(()) = auth::logout() {
+                LocalStorage::remove(STORAGE_KEY).expect("problem removing key from local storage");
                 data.user = None;
             }
         }

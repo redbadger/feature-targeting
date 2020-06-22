@@ -1,7 +1,7 @@
 use anyhow::Result;
 // use jsonwebtoken::{decode, DecodingKey, Validation};
 use base64::decode;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::str;
 use url::Url;
 use uuid::Uuid;
@@ -15,7 +15,7 @@ pub struct Claims {
     pub name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
     pub state: String,
     pub access_token: String,
@@ -28,7 +28,7 @@ pub struct AuthResponse {
     pub prompt: String,
 }
 
-pub fn login() -> Result<String> {
+pub fn get_login_url() -> Result<Url> {
     let oauth2_endpoint = Url::parse_with_params(
         "https://accounts.google.com/o/oauth2/v2/auth",
         &[
@@ -44,14 +44,19 @@ pub fn login() -> Result<String> {
             ("state", "pass-through value"),
         ],
     )?;
-    Ok(oauth2_endpoint.to_string())
+    Ok(oauth2_endpoint)
 }
 
 pub fn logout() -> Result<()> {
     Ok(())
 }
 
-pub async fn decode_jwt(token: &str) -> Result<Claims> {
+pub fn get_claims(auth_response: &AuthResponse) -> Result<Claims> {
+    let token = auth_response.id_token.clone();
+    decode_jwt(token.as_str())
+}
+
+fn decode_jwt(token: &str) -> Result<Claims> {
     // let pubkey = "7edwjFTS82NuGM29NNFkFvd0nGSSaCGJkM7MqXQyha1iz7DFVa2pMOboAv7NoGd9mbmwMDrAAOeP88U1WPnmybkpFIszvxidakkyHTE_UfJgtLo456ck1u18UwQXwOJprCFmkpOd9dzEbx4L2YwxWNXQzTl8k-7yRFuiJrfJrsLrxa8r-eZJAzgxVzgRQp_AyTTqRgUi9sC4p6m5BuFi-2xr2_2a0Z9qgpQ6hxsSVyo2jmnVQ4rBmNdKCDIR4FBVP5NmVDlFNOpRauzwKGa2VPHcbOqKVlFHRd43NGgTMXZVfsSghy5UoLr4eKYMA3LeFszcWarhNxz_-wqcwx3h8w";
     // let key = DecodingKey::from_secret(pubkey.as_ref());
     // super::log!(key);
