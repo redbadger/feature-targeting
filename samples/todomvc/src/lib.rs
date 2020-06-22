@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use enclose::enc;
 use graphql_client::{GraphQLQuery, Response};
 use indexmap::IndexMap;
@@ -174,26 +175,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 Some(path_part) if path_part == TodoFilter::Completed.to_url_path() => {
                     TodoFilter::Completed
                 }
-                _ => {
-                    if let Ok(auth_response) = LocalStorage::get(STORAGE_KEY) {
-                        if let Ok(claims) = auth::get_claims(&auth_response) {
-                            orders.perform_cmd(async move { LoggedIn(Some(claims)) });
-                        }
-                    } else {
-                        let url = url.to_string();
-                        let url = url.strip_prefix("/#").unwrap_or("");
-                        if let Ok(auth_response) =
-                            serde_urlencoded::from_str::<auth::AuthResponse>(url)
-                        {
-                            if let Ok(claims) = auth::get_claims(&auth_response) {
-                                LocalStorage::insert(STORAGE_KEY, &auth_response)
-                                    .expect("problem storing value in local storage");
-                                orders.perform_cmd(async move { LoggedIn(Some(claims)) });
-                            }
-                        }
-                    }
-                    TodoFilter::All
-                }
+                _ => TodoFilter::All,
             };
         }
         NewTodoTitleChanged(title) => {
@@ -590,7 +572,32 @@ fn view_clear_completed(todos: &IndexMap<TodoId, Todo>) -> Option<Node<Msg>> {
     })
 }
 
+fn get_claims(url: &Url) -> anyhow::Result<Option<auth::Claims>> {
+    if let Ok(auth_response) = LocalStorage::get(STORAGE_KEY) {
+        let claims = auth::get_claims(&auth_response)?;
+        return Ok(Some(claims));
+    } else {
+        let url = url.to_string();
+        let url = url
+            .strip_prefix("/#")
+            .ok_or_else(|| anyhow!("url doesn't start with \"/#\""))?;
+        if let Ok(auth_response) = serde_urlencoded::from_str::<auth::AuthResponse>(url) {
+            let claims = auth::get_claims(&auth_response)?;
+            LocalStorage::insert(STORAGE_KEY, &auth_response)
+                .map_err(|e| anyhow!("cannot insert into localstorage {:?}", e))?;
+            return Ok(Some(claims));
+        }
+    }
+    Ok(None)
+}
+
 fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
+    match get_claims(&url) {
+        Ok(claims) => {
+            orders.perform_cmd(async move { Msg::LoggedIn(claims) });
+        }
+        Err(e) => error!(e),
+    };
     orders.perform_cmd(async {
         let request = GetTodos::build_query(get_todos::Variables);
         let response = send_graphql_request(&request).await;
