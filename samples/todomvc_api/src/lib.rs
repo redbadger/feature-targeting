@@ -16,7 +16,11 @@ pub async fn create_app(database_url: &str) -> Result<Server<graphql::State>> {
 
     app.middleware(
         CorsMiddleware::new()
-            .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().unwrap())
+            .allow_methods(
+                "GET, POST, OPTIONS"
+                    .parse::<HeaderValue>()
+                    .expect("could not parse as HTTP header value"),
+            )
             .allow_origin(Origin::from("*"))
             .allow_credentials(false),
     );

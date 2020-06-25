@@ -6,9 +6,9 @@ fn main() -> Result<()> {
     dotenv().ok();
     env_logger::init();
 
-    smol::run(start(
-        &env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file"),
-    ))
+    let database_url = env::var("DATABASE_URL")?;
+
+    smol::run(start(&database_url))
 }
 
 async fn start(database_url: &str) -> Result<()> {

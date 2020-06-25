@@ -64,7 +64,8 @@ impl QueryRoot {
 
     #[field(desc = "Get Todo by id")]
     async fn todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
-        let todo = db::Todo::find_by_id(Uuid::parse_str(id.as_str())?, &context.data()).await?;
+        let id = Uuid::parse_str(id.as_str())?;
+        let todo = db::Todo::find_by_id(id, &context.data()).await?;
         Ok(todo.into())
     }
 }
