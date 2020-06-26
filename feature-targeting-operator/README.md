@@ -156,7 +156,7 @@ Ensure your context points to a Kubernetes cluster running Istio 1.6+ and the [`
 (cd manifests && make)
 ```
 
-You can install the example CRD and test that the `x-features` header is populated when you curl the [echo service](../samples/echo-service/README.md).
+You can install the example CRD and test that the `x-features` header is populated when you curl the [echo service](../examples/echo-service/README.md).
 
 ```sh
 (cd examples && make)

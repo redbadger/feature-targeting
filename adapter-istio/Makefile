@@ -17,7 +17,7 @@ docker-run:
 # Adapter interface protobuf compilation (here be dragons)
 
 protobuf-install: template/feature-targeting-template.yaml template/feature-targeting.yaml
-	cp template/*.yaml ../samples/2-enable-adapter/
+	cp template/*.yaml ../examples/2-enable-adapter/
 
 protobuf-clean:
 	rm -f template/*.yaml template/*.proto_descriptor template/generated_template.*

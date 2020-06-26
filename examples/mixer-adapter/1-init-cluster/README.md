@@ -1,4 +1,4 @@
-# Step 1: Initialize a local Kubernetes cluster to run the samples
+# Step 1: Initialize a local Kubernetes cluster to run the examples
 
 This uses [kind](https://kind.sigs.k8s.io/) to provision a cluster. You also need to install
 [Istio](https://istio.io/), as the only available implementation of feature targeting is
