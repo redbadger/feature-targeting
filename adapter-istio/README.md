@@ -18,5 +18,5 @@ make protobuf-install
 Validate the generated manifests:
 
 ```sh
-kustomize build ../samples/adapter-istio | istioctl validate -f -
+kustomize build ../examples/adapter-istio | istioctl validate -f -
 ```

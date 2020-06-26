@@ -1,6 +1,6 @@
 # echo service
 
-This sample uses a HTTP echo service to reflect back the request made by the
+This example uses a HTTP echo service to reflect back the request made by the
 client. You can test different ways of injecting and overriding features.
 
 ## What we'll show

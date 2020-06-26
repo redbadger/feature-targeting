@@ -14,7 +14,7 @@ TODO
 ## Install the adapter into Istio using the feature targeting operator
 
 The feature targeting operator relies on the built adapter being mounted
-into the pod using a persistent volume. You can look at the [echo service example](../samples/echo-service/README.md)
+into the pod using a persistent volume. You can look at the [echo service example](../examples/echo-service/README.md)
 to see how the volume is configured. It expects the built envoy filter to be
 present in `/tmp/envoy-filters` on the host machine. To build and install it
 run
@@ -23,6 +23,6 @@ run
 make install
 ```
 
-Now you can [deploy the echo service sample](../samples/echo-service/README.md)
+Now you can [deploy the echo service example](../examples/echo-service/README.md)
 and follow the steps in the [operator readme](../feature-targeting-operator/README.md#installation-and-testing)
 to install the filter in the echo service's sidecar.

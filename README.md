@@ -8,7 +8,7 @@ use is not advisable unless you're brave.
 
 ## Getting started
 
-See the [samples](./samples/README.md) directory to try some examples.
+See the [examples](./examples/README.md) directory to try things out.
 
 ## About feature targeting
 

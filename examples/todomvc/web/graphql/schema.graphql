@@ -1,0 +1,41 @@
+schema {
+  query: QueryRoot
+  mutation: MutationRoot
+}
+
+directive @defer on FIELD
+directive @stream on FIELD
+type MutationRoot {
+  # Create a new todo (returns the created todo)
+  createTodo(todo: NewTodo!): Todo!
+  # Update a todo (returns the updated todo)
+  updateTodo(id: ID!, todo: UpdateTodo!): Todo!
+  # Delete a todo (returns the deleted todo)
+  deleteTodo(id: ID!): Todo!
+}
+
+input NewTodo {
+  title: String!
+}
+
+type QueryRoot {
+  # Get all Todos
+  todos: [Todo!]!
+  # Get Todo by id
+  todo(id: ID!): Todo!
+}
+
+# A todo
+type Todo {
+  # The id of the todo
+  id: ID!
+  # The title of the todo
+  title: String!
+  # Is the todo completed?
+  completed: Boolean!
+}
+
+input UpdateTodo {
+  title: String
+  completed: Boolean
+}
