@@ -4,7 +4,7 @@ use self::adapter_istio::{
     HandleFeatureTargetingRequest, HandleFeatureTargetingResponse, OutputMsg, Params,
 };
 use data_plane::features;
-use features::explicit;
+use features::{explicit, implicit};
 use istio::mixer::adapter::model::v1beta1::CheckResult;
 use prost::Message;
 use std::collections::HashMap;
@@ -73,7 +73,7 @@ impl HandleFeatureTargetingService for Service {
             request.insert("method", inst.method.as_ref());
             request.insert("path", inst.path.as_ref());
 
-            let ftrs = features::target(&request, &config);
+            let ftrs = features::target(&request, &config, &implicit::Config::default());
 
             let reply = HandleFeatureTargetingResponse {
                 output: Some(OutputMsg { features: ftrs }),
