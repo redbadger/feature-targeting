@@ -165,7 +165,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 );
             }
         }
-        TodosFetched(error) => log!(error),
+        TodosFetched(error) => error!(error),
 
         UrlChanged(subs::UrlChanged(mut url)) => {
             data.filter = match url.next_path_part() {
@@ -220,7 +220,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 },
             );
         }
-        NewTodoCreated(error) => log!(error),
+        NewTodoCreated(error) => error!(error),
 
         ToggleTodo(todo_id) => {
             if let Some(todo) = data.todos.get(&todo_id) {
@@ -246,7 +246,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 todo.completed = !todo.completed;
             }
         }
-        TodoToggled(error) => log!(error),
+        TodoToggled(error) => error!(error),
         ToggleAll => {
             let target_state = !data.todos.values().all(|todo| todo.completed);
 
@@ -273,9 +273,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             Ok(deleted_id) => {
                 data.todos.shift_remove(&deleted_id);
             }
-            Err(e) => log!("Failed to parse id of deleted todo as Uuid::V4 ({:?})", e),
+            Err(e) => error!("Failed to parse id of deleted todo as Uuid::V4 ({:?})", e),
         },
-        TodoRemoved(error) => log!(error),
+        TodoRemoved(error) => error!(error),
 
         StartTodoEdit(todo_id) => {
             if let Some(todo) = data.todos.get(&todo_id) {
@@ -320,9 +320,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     todo.title = response_data.update_todo.title;
                 }
             }
-            Err(e) => log!("Failed to parse id of updated todo as Uuid::V4 ({:?})", e),
+            Err(e) => error!("Failed to parse id of updated todo as Uuid::V4 ({:?})", e),
         },
-        EditingTodoSaved(error) => log!(error),
+        EditingTodoSaved(error) => error!(error),
         CancelTodoEdit => {
             data.editing_todo = None;
         }
@@ -540,12 +540,12 @@ fn view_footer(todos: &IndexMap<TodoId, Todo>, filter: TodoFilter) -> Node<Msg> 
     ]
 }
 
-fn view_filters(filter: TodoFilter) -> Node<Msg> {
+fn view_filters(current_filter: TodoFilter) -> Node<Msg> {
     ul![
         C!["filters"],
-        view_filter("All", TodoFilter::All, filter),
-        view_filter("Active", TodoFilter::Active, filter),
-        view_filter("Completed", TodoFilter::Completed, filter),
+        view_filter("All", TodoFilter::All, current_filter),
+        view_filter("Active", TodoFilter::Active, current_filter),
+        view_filter("Completed", TodoFilter::Completed, current_filter),
     ]
 }
 
@@ -615,7 +615,7 @@ fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
 }
 
 #[wasm_bindgen(start)]
-pub fn start() {
+pub fn create_app() {
     App::builder(update, view)
         .after_mount(after_mount)
         .build_and_start();

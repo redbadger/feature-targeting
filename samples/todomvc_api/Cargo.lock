@@ -103,9 +103,9 @@ checksum = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
 
 [[package]]
 name = "async-graphql"
-version = "1.16.0"
+version = "1.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e24462344f3dbb11e9ee85ae4622ce6a41d4062e9e976c07d53cc071bc019a6c"
+checksum = "caa0bf9108a731b16c09862718313e9ca1eb059b26c537f3725d7cc77cbfe90f"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -145,9 +145,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-derive"
-version = "1.16.0"
+version = "1.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71255a6d1e73ab286fafcdcb06047825060d65de472abeb90dbdeed3f1efb0d4"
+checksum = "fa5965bec10f5f60cf122c65da59d62e2699ece406507f4d88ead5a047e65f85"
 dependencies = [
  "Inflector",
  "async-graphql-parser",
@@ -173,9 +173,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-tide"
-version = "1.15.13"
+version = "1.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5606b0ba0c06e104a1c31ce58ba2f21f67fe5795d6db4262b3f928177c5dfce8"
+checksum = "0709c6402db0d42e3a274357f689534ba6622702ebacff486ea16a963fb9227d"
 dependencies = [
  "async-graphql",
  "async-std",
@@ -444,9 +444,9 @@ checksum = "24508e28c677875c380c20f4d28124fab6f8ed4ef929a1397d7b1a31e92f1005"
 
 [[package]]
 name = "cc"
-version = "1.0.54"
+version = "1.0.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bbb73db36c1246e9034e307d0fba23f9a2e251faa47ade70c1bd252220c8311"
+checksum = "b1be3409f94d7bdceeb5f5fac551039d9b3f00e25da7a74fc4d33400a0d96368"
 
 [[package]]
 name = "cfg-if"
@@ -1284,9 +1284,9 @@ checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 
 [[package]]
 name = "openssl"
-version = "0.10.29"
+version = "0.10.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cee6d85f4cb4c4f59a6a85d5b68a233d280c82e29e822913b9c8b129fbf20bdd"
+checksum = "8d575eff3665419f9b83678ff2815858ad9d11567e082f5ac1814baba4e2bcb4"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -1317,9 +1317,9 @@ dependencies = [
 
 [[package]]
 name = "parking"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bcaa58ee64f8e4a3d02f5d8e6ed0340eae28fed6fdabd984ad1776e3b43848a"
+checksum = "c4029bc3504a62d92e42f30b9095fdef73b8a0b2a06aa41ce2935143b05a1a06"
 
 [[package]]
 name = "parking_lot"

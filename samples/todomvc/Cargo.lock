@@ -883,6 +883,7 @@ dependencies = [
  "serde_urlencoded",
  "url",
  "uuid",
+ "wasm-bindgen",
 ]
 
 [[package]]

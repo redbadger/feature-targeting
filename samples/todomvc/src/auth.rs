@@ -20,7 +20,8 @@ pub struct AuthResponse {
     pub expires_in: u32,
     pub scope: String,
     pub id_token: String,
-    pub authuser: i32,
+    #[serde(rename = "authuser")]
+    pub auth_user: i32,
     pub hd: String,
     pub prompt: String,
 }
