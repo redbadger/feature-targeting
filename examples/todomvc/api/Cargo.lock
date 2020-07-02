@@ -103,9 +103,9 @@ checksum = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
 
 [[package]]
 name = "async-graphql"
-version = "1.16.1"
+version = "1.16.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "caa0bf9108a731b16c09862718313e9ca1eb059b26c537f3725d7cc77cbfe90f"
+checksum = "bdda3fe2d072d88f275d9c115ed36e4f8ca81f0f0b0c625e8a4976f927d3e4bc"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -173,9 +173,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-tide"
-version = "1.16.1"
+version = "1.16.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0709c6402db0d42e3a274357f689534ba6622702ebacff486ea16a963fb9227d"
+checksum = "9112e154fd920cb99a4e16a278e7c21986c9b05d5ba0a3f2f317d0c3d45aad4f"
 dependencies = [
  "async-graphql",
  "async-std",

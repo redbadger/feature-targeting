@@ -1,5 +1,4 @@
 use anyhow::anyhow;
-use enclose::enc;
 use graphql_client::{GraphQLQuery, Response};
 use indexmap::IndexMap;
 use seed::{prelude::*, *};
@@ -142,9 +141,9 @@ enum Msg {
     EditingTodoSaved(fetch::Result<Response<update_todo::ResponseData>>),
     CancelTodoEdit,
 
-    Login(),
+    Login,
     LoggedIn(Option<auth::Claims>),
-    Logout(),
+    Logout,
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -327,7 +326,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             data.editing_todo = None;
         }
 
-        Login() => {
+        Login => {
             if let Ok(auth_url) = auth::get_login_url() {
                 window()
                     .open_with_url_and_target(auth_url.to_string().as_str(), "_self")
@@ -345,7 +344,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             data.user = None;
         }
 
-        Logout() => {
+        Logout => {
             if let Ok(()) = auth::logout() {
                 LocalStorage::remove(STORAGE_KEY).expect("problem removing key from local storage");
                 data.user = None;
@@ -402,7 +401,7 @@ fn view_nav(user: &Option<String>) -> Node<Msg> {
                 span![format!("{} ", user)],
                 a![
                     C!["auth-link"],
-                    mouse_ev(Ev::Click, |_| Msg::Logout()),
+                    mouse_ev(Ev::Click, |_| Msg::Logout),
                     "logout"
                 ]
             ]
@@ -411,7 +410,7 @@ fn view_nav(user: &Option<String>) -> Node<Msg> {
                 span!["Please "],
                 a![
                     C!["auth-link"],
-                    mouse_ev(Ev::Click, |_| Msg::Login()),
+                    mouse_ev(Ev::Click, |_| Msg::Login),
                     "login"
                 ],
                 span![" to modify todos"]
@@ -483,21 +482,24 @@ fn view_todo(
                    At::Type => "checkbox",
                    At::Checked => todo.completed.as_at_value()
                 },
-                ev(
-                    Ev::Change,
-                    enc!((todo_id) move |_| Msg::ToggleTodo(todo_id))
-                )
+                ev(Ev::Change, {
+                    let id = *todo_id;
+                    move |_| Msg::ToggleTodo(id)
+                })
             ],
             label![
-                ev(
-                    Ev::DblClick,
-                    enc!((todo_id) move |_| Msg::StartTodoEdit(todo_id))
-                ),
+                ev(Ev::DblClick, {
+                    let id = *todo_id;
+                    move |_| Msg::StartTodoEdit(id)
+                }),
                 &todo.title
             ],
             button![
                 C!["destroy"],
-                ev(Ev::Click, enc!((todo_id) move |_| Msg::RemoveTodo(todo_id)))
+                ev(Ev::Click, {
+                    let id = *todo_id;
+                    move |_| Msg::RemoveTodo(id)
+                })
             ]
         ],
         match editing_todo {
