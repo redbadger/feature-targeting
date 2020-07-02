@@ -1,5 +1,4 @@
 use graphql_client::{GraphQLQuery, Response};
-use indexmap::IndexMap;
 use seed::{prelude::*, *};
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -16,6 +15,7 @@ const ACTIVE: &str = "active";
 const COMPLETED: &str = "completed";
 
 type TodoId = Uuid;
+type Store = indexmap::IndexMap<TodoId, Todo>;
 
 macro_rules! generate_query {
     ($query:ident) => {
@@ -56,7 +56,7 @@ pub struct Model {
 
 #[derive(Default, Serialize, Deserialize)]
 struct Data {
-    todos: IndexMap<TodoId, Todo>,
+    todos: Store,
     filter: TodoFilter,
     new_todo_title: String,
     editing_todo: Option<EditingTodo>,
@@ -368,7 +368,7 @@ fn view_header(new_todo_title: &str, user: &Option<String>) -> Node<Msg> {
 }
 
 fn view_main(
-    todos: &IndexMap<TodoId, Todo>,
+    todos: &Store,
     filter: TodoFilter,
     editing_todo: &Option<EditingTodo>,
     editing_todo_input: &ElRef<HtmlInputElement>,
@@ -392,7 +392,7 @@ fn view_main(
 }
 
 fn view_todos(
-    todos: &IndexMap<TodoId, Todo>,
+    todos: &Store,
     filter: TodoFilter,
     editing_todo: &Option<EditingTodo>,
     editing_todo_input: &ElRef<HtmlInputElement>,
@@ -472,7 +472,7 @@ fn view_todo(
     ]
 }
 
-fn view_footer(todos: &IndexMap<TodoId, Todo>, filter: TodoFilter) -> Node<Msg> {
+fn view_footer(todos: &Store, filter: TodoFilter) -> Node<Msg> {
     let active_count = todos.values().filter(|todo| !todo.completed).count();
 
     footer![
@@ -510,7 +510,7 @@ fn view_filter(title: &str, filter: TodoFilter, current_filter: TodoFilter) -> N
     ]]
 }
 
-fn view_clear_completed(todos: &IndexMap<TodoId, Todo>) -> Option<Node<Msg>> {
+fn view_clear_completed(todos: &Store) -> Option<Node<Msg>> {
     let completed_count = todos.values().filter(|todo| todo.completed).count();
 
     IF!(completed_count > 0 => {
