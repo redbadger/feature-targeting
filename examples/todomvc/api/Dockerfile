@@ -5,8 +5,10 @@ RUN rustup component add rustfmt clippy
 COPY Cargo.toml Cargo.lock ./
 
 RUN mkdir -p ./src/ && echo 'fn main() {}' >./src/main.rs && echo '' >./src/lib.rs
-RUN cargo build --release && rm -rf ./target/release/.fingerprint/feature_targeting_operator-*
+RUN cargo build --release && rm -rf ./target/release/.fingerprint/todomvc_api-*
 
+COPY sql ./sql
+COPY sqlx-data.json .
 COPY src ./src
 
 RUN cargo clippy --release -- -D warnings && \
@@ -18,7 +20,6 @@ FROM debian:buster-slim as release
 
 RUN apt-get update && apt-get install -y \
     openssl \
-    ca-certificates \
     tini \
     ;
 
@@ -26,11 +27,10 @@ RUN useradd svc
 USER svc
 
 COPY --chown=svc --from=build \
-    /target/release/feature_targeting_operator \
+    /target/release/todomvc_api \
     /
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-EXPOSE 8080
-ENV RUSTLOG=roperator=debug
-CMD ["/feature_targeting_operator"]
+EXPOSE 3030
+CMD ["/todomvc_api"]

@@ -3,7 +3,7 @@ use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
     Context, EmptySubscription, FieldResult, InputObject, Object, Schema, SimpleObject, ID,
 };
-use sqlx::{PgConnection as Connection, Pool};
+use sqlx::PgPool as Pool;
 use tide::{http::mime, Body, Request, Response, StatusCode};
 use uuid::Uuid;
 
@@ -43,7 +43,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(pool: Pool<Connection>) -> State {
+    pub fn new(pool: Pool) -> State {
         State {
             schema: Schema::build(QueryRoot, MutationRoot, EmptySubscription)
                 .data(pool)
