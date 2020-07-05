@@ -19,3 +19,7 @@ serde_urlencoded = "0.6.1"
 url = "2.1.1"
 uuid = { version = "0.8.1", features = ["serde", "v4", "wasm-bindgen"] }
 wasm-bindgen = "0.2.64"
+
+[profile.release]
+opt-level = 'z'
+lto = true

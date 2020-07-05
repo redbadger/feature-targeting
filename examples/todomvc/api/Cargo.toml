@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.31"
-async-graphql = "1.16.4"
+async-graphql = "1.16.5"
 async-graphql-tide = "1.16.4"
 dotenv = "0.15.0"
 env_logger = "0.7.1"
