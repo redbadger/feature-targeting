@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use tide::{
-    http::{cookies::Cookie, mime},
+    http::{
+        cookies::{Cookie, SameSite},
+        mime,
+    },
     Body, Request, Response,
 };
 
@@ -21,6 +24,7 @@ async fn main() -> Result<()> {
     app.at("/completed").get(home);
     app.at("/pkg").serve_dir(PKG)?;
     app.at("/public").serve_dir(PUBLIC)?;
+    app.at("/healthz").get(|_| async { Ok(Response::new(204)) });
 
     app.listen("0.0.0.0:8080").await?;
 
@@ -34,7 +38,10 @@ async fn home(req: Request<String>) -> tide::Result {
     response.set_body(body);
 
     let api_url = req.state().clone();
-    let cookie = Cookie::build("api_url", api_url).path("/").finish();
+    let cookie = Cookie::build("api_url", api_url)
+        .path("/")
+        .same_site(SameSite::Strict)
+        .finish();
     response.insert_cookie(cookie);
 
     response.set_content_type(mime::HTML);

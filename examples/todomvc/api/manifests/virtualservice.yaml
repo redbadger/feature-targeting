@@ -11,5 +11,5 @@ spec:
     - route:
         - destination:
             port:
-              number: 3030
+              number: 80
             host: todomvc-api

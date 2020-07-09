@@ -6,7 +6,8 @@ metadata:
     app: todomvc-api
 spec:
   ports:
-    - port: 3030
+    - port: 80
+      targetPort: 3030
       name: http
   selector:
     app: todomvc-api

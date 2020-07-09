@@ -24,7 +24,8 @@ RUN useradd svc
 USER svc
 
 COPY client/index.html /client/
-COPY client/pkg /client/pkg/
+COPY client/pkg/todomvc_web_client.js /client/pkg/
+COPY client/pkg/todomvc_web_client_bg.wasm /client/pkg/
 COPY client/public /client/public/
 
 COPY --chown=svc --from=build \

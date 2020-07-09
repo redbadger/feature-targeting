@@ -15,8 +15,11 @@ spec:
     spec:
       containers:
         - name: todomvc-api
-          image: todomvc-api
+          image: todomvc_api
           imagePullPolicy: IfNotPresent
+          env:
+            - name: DATABASE_URL
+              value: postgres://stuartharris@host.docker.internal/todos
           ports:
             - containerPort: 3030
           resources:
