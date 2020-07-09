@@ -1,3 +1,4 @@
+use browser::util::cookies;
 use graphql_client::{GraphQLQuery, Response};
 use seed::{prelude::*, *};
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,7 @@ mod session;
 
 const ENTER_KEY: u32 = 13;
 const ESC_KEY: u32 = 27;
-const API_URL: &str = "http://localhost:3030/graphql";
+const DEFAULT_API_URL: &str = "http://localhost:3030/graphql";
 const ACTIVE: &str = "active";
 const COMPLETED: &str = "completed";
 
@@ -33,12 +34,12 @@ generate_query!(DeleteTodo);
 generate_query!(CreateTodo);
 generate_query!(UpdateTodo);
 
-async fn send_graphql_request<V, T>(variables: &V) -> fetch::Result<T>
+async fn send_graphql_request<V, T>(api_url: &url::Url, variables: &V) -> fetch::Result<T>
 where
     V: Serialize,
     T: for<'de> Deserialize<'de> + 'static,
 {
-    Request::new(API_URL)
+    Request::new(api_url.to_string())
         .method(Method::Post)
         .json(variables)?
         .fetch()
@@ -49,6 +50,7 @@ where
 }
 
 pub struct Model {
+    api_url: url::Url,
     base_url: Url,
     data: Data,
     refs: Refs,
@@ -182,9 +184,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             for (id, todo) in &data.todos {
                 if todo.completed {
                     let vars = delete_todo::Variables { id: id.to_string() };
-                    orders.skip().perform_cmd(async {
+                    let api_url = model.api_url.clone();
+                    orders.skip().perform_cmd(async move {
                         let request = DeleteTodo::build_query(vars);
-                        let response = send_graphql_request(&request).await;
+                        let response = send_graphql_request(&api_url, &request).await;
                         TodoRemoved(response)
                     });
                 }
@@ -196,9 +199,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let vars = create_todo::Variables {
                     title: mem::take(&mut data.new_todo_title),
                 };
-                orders.skip().perform_cmd(async {
+                let api_url = model.api_url.clone();
+                orders.skip().perform_cmd(async move {
                     let request = CreateTodo::build_query(vars);
-                    let response = send_graphql_request(&request).await;
+                    let response = send_graphql_request(&api_url, &request).await;
                     NewTodoCreated(response)
                 });
             }
@@ -225,9 +229,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     title: Some(todo.title.clone()),
                     completed: Some(!todo.completed),
                 };
-                orders.skip().perform_cmd(async {
+                let api_url = model.api_url.clone();
+                orders.skip().perform_cmd(async move {
                     let request = UpdateTodo::build_query(vars);
-                    let response = send_graphql_request(&request).await;
+                    let response = send_graphql_request(&api_url, &request).await;
                     TodoToggled(response)
                 });
             }
@@ -256,9 +261,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
         RemoveTodo(todo_id) => {
             let id = todo_id.to_string();
-            orders.skip().perform_cmd(async {
+            let api_url = model.api_url.clone();
+            orders.skip().perform_cmd(async move {
                 let request = DeleteTodo::build_query(delete_todo::Variables { id });
-                let response = send_graphql_request(&request).await;
+                let response = send_graphql_request(&api_url, &request).await;
                 TodoRemoved(response)
             });
         }
@@ -300,9 +306,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     title: Some(todo.title),
                     completed: None,
                 };
-                orders.skip().perform_cmd(async {
+                let api_url = model.api_url.clone();
+                orders.skip().perform_cmd(async move {
                     let request = UpdateTodo::build_query(vars);
-                    let response = send_graphql_request(&request).await;
+                    let response = send_graphql_request(&api_url, &request).await;
                     EditingTodoSaved(response)
                 });
             }
@@ -524,20 +531,34 @@ fn view_clear_completed(todos: &Store) -> Option<Node<Msg>> {
 
 fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
     session::after_mount(&url, orders);
-    orders.perform_cmd(async {
+
+    let api_url = match cookies() {
+        Some(jar) => match jar.get("api_url") {
+            Some(cookie) => cookie.value().to_string(),
+            None => DEFAULT_API_URL.to_string(),
+        },
+        None => DEFAULT_API_URL.to_string(),
+    };
+    let api_url = url::Url::parse(&api_url).expect("Cannot parse api_url");
+
+    let model = Model {
+        api_url,
+        base_url: url.to_hash_base_url(),
+        data: Data::default(),
+        refs: Refs::default(),
+    };
+
+    let api_url = model.api_url.clone();
+    orders.perform_cmd(async move {
         let request = GetTodos::build_query(get_todos::Variables);
-        let response = send_graphql_request(&request).await;
+        let response = send_graphql_request(&api_url, &request).await;
         Msg::TodosFetched(response)
     });
     orders
         .subscribe(Msg::UrlChanged)
-        .notify(subs::UrlChanged(url.clone()));
+        .notify(subs::UrlChanged(url));
 
-    AfterMount::new(Model {
-        base_url: url.to_hash_base_url(),
-        data: Data::default(),
-        refs: Refs::default(),
-    })
+    AfterMount::new(model)
 }
 
 #[wasm_bindgen(start)]
