@@ -54,6 +54,8 @@ There are a set of [manifests](./manifests) in the `manifests` directory. To ins
 (cd manifests && make)
 ```
 
+You should be able to access the UI at http://web.todomvc.localhost (but you may need to add `web.todomvc.localhost` to your hosts file in order to resolve).
+
 [graphql-client]: https://github.com/graphql-rust/graphql-client
 [seed]: https://github.com/seed-rs/seed
 [todomvc]: http://todomvc.com/
