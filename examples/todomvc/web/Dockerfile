@@ -2,14 +2,12 @@ FROM rust:1.44.1 AS build
 
 RUN rustup component add rustfmt clippy
 
-COPY Cargo.toml Cargo.lock ./
+COPY server/Cargo.toml server/Cargo.lock /
 
 RUN mkdir -p ./src/ && echo 'fn main() {}' >./src/main.rs && echo '' >./src/lib.rs
-RUN cargo build --release && rm -rf ./target/release/.fingerprint/todomvc_api-*
+RUN cargo build --release && rm -rf ./target/release/.fingerprint/todomvc_web_server-*
 
-COPY sql ./sql
-COPY sqlx-data.json .
-COPY src ./src
+COPY server/src src
 
 RUN cargo clippy --release -- -D warnings && \
     cargo test --release && \
@@ -19,18 +17,21 @@ RUN cargo clippy --release -- -D warnings && \
 FROM debian:buster-slim as release
 
 RUN apt-get update && apt-get install -y \
-    openssl \
     tini \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd svc
 USER svc
 
+COPY client/index.html /client/
+COPY client/pkg /client/pkg/
+COPY client/public /client/public/
+
 COPY --chown=svc --from=build \
-    /target/release/todomvc_api \
-    /
+    /target/release/todomvc_web_server \
+    /server/
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-EXPOSE 3030
-CMD ["/todomvc_api"]
+EXPOSE 8080
+CMD ["/server/todomvc_web_server"]

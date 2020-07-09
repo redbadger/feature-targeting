@@ -1,5 +1,5 @@
 [package]
-name = "todomvc"
+name = "todomvc_web_client"
 version = "0.1.0"
 authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
 edition = "2018"

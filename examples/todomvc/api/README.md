@@ -1,4 +1,4 @@
-## GraphQL backend for Todo MVC
+# GraphQL backend for Todo MVC
 
 Currently supports:
 
@@ -12,7 +12,7 @@ Built with:
 
 - [`async-graphql`](https://github.com/async-graphql/async-graphql) (for GraphQL)
 - [`tide`](https://github.com/http-rs/tide) (for HTTP server)
-- [`smol`](https://github.com/stjepang/smol) (for async runtime)
+- [`async-std`](https://docs.rs/async-std/1.6.2/async_std/) (uses [`smol`](https://github.com/stjepang/smol) for async runtime)
 - [`sqlx`](https://github.com/launchbadge/sqlx) (for SQL queries)
 - PostgreSQL (database)
 
@@ -42,9 +42,9 @@ _Note that a local instance of PostgreSQL is needed in order to compile._
   cargo run
   ```
 
-- Access the Graphiql UI at http://localhost:3030/graphiql
+- Access the Graphiql UI at [http://localhost:3030/graphiql](http://localhost:3030/graphiql)
 
-### CI Build
+## CI Build
 
 Currently we are tied to master branch of [sqlx](https://github.com/launchbadge/sqlx) in order to be able to use the cargo subcommand `cargo sqlx`. Clone the `sqlx` repo and install the subcommand:
 

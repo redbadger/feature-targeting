@@ -1,0 +1,10 @@
+[package]
+name = "todomvc_web_server"
+version = "0.1.0"
+authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.31"
+async-std = { version = "1.6.2", features = ["attributes"] }
+tide = "0.11.0"
