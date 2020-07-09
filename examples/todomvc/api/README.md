@@ -54,7 +54,7 @@ cd sqlx
 cargo install --path sqlx-cli
 ```
 
-Ensure the SQL statements are `PREPARED` before building:
+Ensure the SQL statements are validated before building:
 
 ```sh
 cargo sqlx prepare
@@ -63,11 +63,19 @@ cargo sqlx prepare
 Build the Docker image:
 
 ```sh
-docker build . -t todomvc_api
+make
 ```
 
 Run the Docker image (Docker Desktop for Mac):
 
 ```sh
 docker run --env DATABASE_URL=postgres://stuartharris@host.docker.internal/todos -it -p3030:3030 todomvc_api
+```
+
+## Running in Kubernetes
+
+There are a set of [manifests](./manifests) in the `manifests` directory. To install on Docker for Mac:
+
+```sh
+(cd manifests && make)
 ```

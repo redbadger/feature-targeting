@@ -1,6 +1,6 @@
 # Todo MVC Web UI
 
-A client-side [Todo MVC][todomvc] Web UI written in Rust. 
+A client-side [Todo MVC][todomvc] Web UI written in Rust.
 
 Built with:
 
@@ -12,33 +12,47 @@ Currently, this is configured against a private Google GSuite OIDC Identity Prov
 
 We will also be updating this soon to demonstrate feature targeting capabilities.
 
-### To get started
+## To get started
 
 - you should build and run the [API](../api/README.md) first
 
 - install `wasm-pack`, either directly:
 
-    ```sh
-    curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh 
-    ```
+  ```sh
+  curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+  ```
 
-    or with Cargo:
+  or with Cargo:
 
-    ```sh
-    cargo install wasm-pack
-    ```
+  ```sh
+  cargo install wasm-pack
+  ```
 
 - if you don't have a static webserver:
-  
-    ```sh
-    brew install httpserver
-    ```
+
+  ```sh
+  brew install httpserver
+  ```
 
 - build and serve:
 
-    ```sh
-    wasm-pack build --target web && httpserver
-    ```
+  ```sh
+  wasm-pack build --target web && httpserver
+  ```
+
+## To build a Docker image
+
+```sh
+make
+```
+
+## Running in Kubernetes
+
+There are a set of [manifests](./manifests) in the `manifests` directory. To install on Docker for Mac:
+
+```sh
+(cd manifests && make)
+```
 
 [graphql-client]: https://github.com/graphql-rust/graphql-client
 [seed]: https://github.com/seed-rs/seed
