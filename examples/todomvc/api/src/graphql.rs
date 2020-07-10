@@ -38,6 +38,8 @@ struct UpdateTodo {
     completed: Option<bool>,
 }
 
+struct AuthSubject(String);
+
 pub struct State {
     pub schema: Schema<QueryRoot, MutationRoot, EmptySubscription>,
 }
@@ -59,7 +61,8 @@ impl QueryRoot {
     #[field(desc = "Get all Todos")]
     async fn todos(&self, context: &Context<'_>) -> FieldResult<Vec<Todo>> {
         let pool = context.data()?;
-        let todos = db::Todo::find_all(pool).await?;
+        let auth_subject = context.data::<AuthSubject>()?;
+        let todos = db::Todo::find_all(&auth_subject.0, pool).await?;
         Ok(todos.iter().cloned().map(Into::into).collect())
     }
 
@@ -67,7 +70,8 @@ impl QueryRoot {
     async fn todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
         let pool = context.data()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let todo = db::Todo::find_by_id(id, pool).await?;
+        let auth_subject = context.data::<AuthSubject>()?;
+        let todo = db::Todo::find_by_id(id, &auth_subject.0, pool).await?;
         Ok(todo.into())
     }
 }
@@ -79,7 +83,8 @@ impl MutationRoot {
     #[field(desc = "Create a new todo (returns the created todo)")]
     async fn create_todo(&self, context: &Context<'_>, todo: NewTodo) -> FieldResult<Todo> {
         let pool = context.data()?;
-        let todo = db::Todo::create(todo.title, pool).await?;
+        let auth_subject = context.data::<AuthSubject>()?;
+        let todo = db::Todo::create(&auth_subject.0, todo.title, pool).await?;
         Ok(todo.into())
     }
 
@@ -91,8 +96,10 @@ impl MutationRoot {
         todo: UpdateTodo,
     ) -> FieldResult<Todo> {
         let pool = context.data()?;
+        let auth_subject = context.data::<AuthSubject>()?;
         let todo = db::Todo::update(
             Uuid::parse_str(id.as_str())?,
+            &auth_subject.0,
             todo.title,
             todo.completed,
             pool,
@@ -104,14 +111,19 @@ impl MutationRoot {
     #[field(desc = "Delete a todo (returns the deleted todo)")]
     async fn delete_todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
         let pool = context.data()?;
-        let todo = db::Todo::delete(Uuid::parse_str(id.as_str())?, pool).await?;
+        let auth_subject = context.data::<AuthSubject>()?;
+        let todo = db::Todo::delete(Uuid::parse_str(id.as_str())?, &auth_subject.0, pool).await?;
         Ok(todo.into())
     }
 }
 
 pub async fn handle_graphql(req: Request<State>) -> tide::Result {
+    let auth_subject = "stu";
     let schema = req.state().schema.clone();
-    async_graphql_tide::graphql(req, schema, |query_builder| query_builder).await
+    async_graphql_tide::graphql(req, schema, |query_builder| {
+        query_builder.data(AuthSubject(auth_subject.to_string()))
+    })
+    .await
 }
 
 pub async fn handle_graphiql(_: Request<State>) -> tide::Result {
