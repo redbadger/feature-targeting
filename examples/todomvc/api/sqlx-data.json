@@ -1,0 +1,193 @@
+{
+  "db": "PostgreSQL",
+  "0560cfb16534e6281064ea72e86dfd8835780e3f224809a0215a4c9804428274": {
+    "query": "DELETE FROM todos\nWHERE id = $1\nRETURNING id,\n    title,\n    completed\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid",
+          "relation_id": 32792,
+          "relation_attribute_no": 1
+        },
+        {
+          "ordinal": 1,
+          "name": "title",
+          "type_info": "Text",
+          "relation_id": 32792,
+          "relation_attribute_no": 2
+        },
+        {
+          "ordinal": 2,
+          "name": "completed",
+          "type_info": "Bool",
+          "relation_id": 32792,
+          "relation_attribute_no": 3
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "0e6b85681697190970e0fc481a73c358d54d85fb3ce9f348621cfbf359ef2395": {
+    "query": "UPDATE todos\nSET title = COALESCE($1, title),\n    completed = COALESCE($2, completed)\nWHERE id = $3\nRETURNING id,\n    title,\n    completed\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid",
+          "relation_id": 32792,
+          "relation_attribute_no": 1
+        },
+        {
+          "ordinal": 1,
+          "name": "title",
+          "type_info": "Text",
+          "relation_id": 32792,
+          "relation_attribute_no": 2
+        },
+        {
+          "ordinal": 2,
+          "name": "completed",
+          "type_info": "Bool",
+          "relation_id": 32792,
+          "relation_attribute_no": 3
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bool",
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "12b35a75f2e88c33b122c6b018a941122fa1ff1f8758b5e095acda5dc04f01cd": {
+    "query": "INSERT INTO todos (title)\nVALUES ($1)\nRETURNING id,\n    title,\n    completed\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid",
+          "relation_id": 32792,
+          "relation_attribute_no": 1
+        },
+        {
+          "ordinal": 1,
+          "name": "title",
+          "type_info": "Text",
+          "relation_id": 32792,
+          "relation_attribute_no": 2
+        },
+        {
+          "ordinal": 2,
+          "name": "completed",
+          "type_info": "Bool",
+          "relation_id": 32792,
+          "relation_attribute_no": 3
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "4752b9c0c44424a1e72216ed282b8db364a4d28e5c61ec025af2d48f1c268473": {
+    "query": "SELECT id,\n    title,\n    completed\nFROM todos\nORDER BY id\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid",
+          "relation_id": 32792,
+          "relation_attribute_no": 1
+        },
+        {
+          "ordinal": 1,
+          "name": "title",
+          "type_info": "Text",
+          "relation_id": 32792,
+          "relation_attribute_no": 2
+        },
+        {
+          "ordinal": 2,
+          "name": "completed",
+          "type_info": "Bool",
+          "relation_id": 32792,
+          "relation_attribute_no": 3
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "5ef9aaebce2d75ac3af7dc04d63507262869bbb63db21afaf726a3d5a4699b2c": {
+    "query": "SELECT id,\n    title,\n    completed\nFROM todos\nWHERE id = $1\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid",
+          "relation_id": 32792,
+          "relation_attribute_no": 1
+        },
+        {
+          "ordinal": 1,
+          "name": "title",
+          "type_info": "Text",
+          "relation_id": 32792,
+          "relation_attribute_no": 2
+        },
+        {
+          "ordinal": 2,
+          "name": "completed",
+          "type_info": "Bool",
+          "relation_id": 32792,
+          "relation_attribute_no": 3
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  }
+}

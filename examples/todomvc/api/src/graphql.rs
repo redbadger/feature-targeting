@@ -3,7 +3,7 @@ use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
     Context, EmptySubscription, FieldResult, InputObject, Object, Schema, SimpleObject, ID,
 };
-use sqlx::{PgConnection as Connection, Pool};
+use sqlx::PgPool as Pool;
 use tide::{http::mime, Body, Request, Response, StatusCode};
 use uuid::Uuid;
 
@@ -43,7 +43,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(pool: Pool<Connection>) -> State {
+    pub fn new(pool: Pool) -> State {
         State {
             schema: Schema::build(QueryRoot, MutationRoot, EmptySubscription)
                 .data(pool)
@@ -58,14 +58,16 @@ pub struct QueryRoot;
 impl QueryRoot {
     #[field(desc = "Get all Todos")]
     async fn todos(&self, context: &Context<'_>) -> FieldResult<Vec<Todo>> {
-        let todos = db::Todo::find_all(&context.data()).await?;
+        let pool = context.data()?;
+        let todos = db::Todo::find_all(pool).await?;
         Ok(todos.iter().cloned().map(Into::into).collect())
     }
 
     #[field(desc = "Get Todo by id")]
     async fn todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
+        let pool = context.data()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let todo = db::Todo::find_by_id(id, &context.data()).await?;
+        let todo = db::Todo::find_by_id(id, pool).await?;
         Ok(todo.into())
     }
 }
@@ -76,7 +78,8 @@ pub struct MutationRoot;
 impl MutationRoot {
     #[field(desc = "Create a new todo (returns the created todo)")]
     async fn create_todo(&self, context: &Context<'_>, todo: NewTodo) -> FieldResult<Todo> {
-        let todo = db::Todo::create(todo.title, &context.data()).await?;
+        let pool = context.data()?;
+        let todo = db::Todo::create(todo.title, pool).await?;
         Ok(todo.into())
     }
 
@@ -87,11 +90,12 @@ impl MutationRoot {
         id: ID,
         todo: UpdateTodo,
     ) -> FieldResult<Todo> {
+        let pool = context.data()?;
         let todo = db::Todo::update(
             Uuid::parse_str(id.as_str())?,
             todo.title,
             todo.completed,
-            &context.data(),
+            pool,
         )
         .await?;
         Ok(todo.into())
@@ -99,7 +103,8 @@ impl MutationRoot {
 
     #[field(desc = "Delete a todo (returns the deleted todo)")]
     async fn delete_todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
-        let todo = db::Todo::delete(Uuid::parse_str(id.as_str())?, &context.data()).await?;
+        let pool = context.data()?;
+        let todo = db::Todo::delete(Uuid::parse_str(id.as_str())?, pool).await?;
         Ok(todo.into())
     }
 }

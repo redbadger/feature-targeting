@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todomvc-web
+  labels:
+    app: todomvc-web
+spec:
+  selector:
+    matchLabels:
+      app: todomvc-web
+  template:
+    metadata:
+      labels:
+        app: todomvc-web
+    spec:
+      containers:
+        - name: todomvc-web
+          image: todomvc_web_server
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: API_URL
+              value: http://todo.red-badger.com/graphql
+            - name: REDIRECT_URL
+              value: http://todo.red-badger.com
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"

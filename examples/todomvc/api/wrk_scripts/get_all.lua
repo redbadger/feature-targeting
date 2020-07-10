@@ -1,0 +1,3 @@
+wrk.method = "POST"
+wrk.body   = '{"variables":null,"query":"query GetTodos {   todos {     id     title     completed   } } mutation DeleteTodo($id: ID!) {   deleteTodo(id: $id) {     id   } } mutation CreateTodo($title: String!) {   createTodo(todo: { title: $title }) {     id     title     completed   } } mutation UpdateTodo($id: ID!, $title: String, $completed: Boolean) {   updateTodo(id: $id, todo: { title: $title, completed: $completed }) {     id     title     completed   } } ","operationName":"GetTodos"}'
+wrk.headers["Content-Type"] = "application/json"

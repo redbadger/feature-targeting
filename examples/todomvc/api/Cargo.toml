@@ -6,12 +6,11 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.31"
-async-graphql = "1.16.0"
-async-graphql-tide = "1.15.13"
+async-graphql = "1.16.8"
+async-graphql-tide = "1.16.6"
+async-std = { version = "1.6.2", features = ["attributes"] }
 dotenv = "0.15.0"
-env_logger = "0.7.1"
 http-types = "2.2.1"
-smol = "0.1.18"
-sqlx = { version = "0.3.5", features = [ "postgres", "macros", "uuid" ] }
+sqlx = { git = "https://github.com/launchbadge/sqlx", features = [ "offline", "postgres", "macros", "uuid" ] }
 tide = "0.11.0"
 uuid = "0.8.1"

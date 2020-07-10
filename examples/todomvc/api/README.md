@@ -1,4 +1,4 @@
-## GraphQL backend for Todo MVC
+# GraphQL backend for Todo MVC
 
 Currently supports:
 
@@ -12,7 +12,7 @@ Built with:
 
 - [`async-graphql`](https://github.com/async-graphql/async-graphql) (for GraphQL)
 - [`tide`](https://github.com/http-rs/tide) (for HTTP server)
-- [`smol`](https://github.com/stjepang/smol) (for async runtime)
+- [`async-std`](https://docs.rs/async-std/1.6.2/async_std/) (uses [`smol`](https://github.com/stjepang/smol) for async runtime)
 - [`sqlx`](https://github.com/launchbadge/sqlx) (for SQL queries)
 - PostgreSQL (database)
 
@@ -42,4 +42,42 @@ _Note that a local instance of PostgreSQL is needed in order to compile._
   cargo run
   ```
 
-- Access the Graphiql UI at http://localhost:3030/graphiql
+- Access the Graphiql UI at [http://localhost:3030/graphiql](http://localhost:3030/graphiql)
+
+## CI Build
+
+Currently we are tied to master branch of [sqlx](https://github.com/launchbadge/sqlx) in order to be able to use the cargo subcommand `cargo sqlx`. Clone the `sqlx` repo and install the subcommand:
+
+```sh
+git clone https://github.com/launchbadge/sqlx
+cd sqlx
+cargo install --path sqlx-cli
+```
+
+Ensure the SQL statements are validated before building:
+
+```sh
+cargo sqlx prepare
+```
+
+Build the Docker image:
+
+```sh
+make
+```
+
+Run the Docker image (Docker Desktop for Mac):
+
+```sh
+docker run --env DATABASE_URL=postgres://stuartharris@host.docker.internal/todos -it -p3030:3030 todomvc_api
+```
+
+## Running in Kubernetes
+
+There are a set of [manifests](./manifests) in the `manifests` directory. To install on Docker for Mac:
+
+```sh
+(cd manifests && make)
+```
+
+You should be able to access the API at http://todo.red-badger.com/graphql (but you may need to add `todo.red-badger.com` to your hosts file in order to resolve).

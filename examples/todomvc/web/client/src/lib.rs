@@ -1,7 +1,5 @@
-use anyhow::anyhow;
-use enclose::enc;
+use browser::util::cookies;
 use graphql_client::{GraphQLQuery, Response};
-use indexmap::IndexMap;
 use seed::{prelude::*, *};
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -9,15 +7,17 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 mod auth;
+mod session;
 
 const ENTER_KEY: u32 = 13;
 const ESC_KEY: u32 = 27;
-const API_URL: &str = "http://localhost:3030/graphql";
+const DEFAULT_API_URL: &str = "http://localhost:3030/graphql";
+const DEFAULT_REDIRECT_URL: &str = "http://localhost:8080";
 const ACTIVE: &str = "active";
 const COMPLETED: &str = "completed";
-const STORAGE_KEY: &str = "todomvc-session";
 
 type TodoId = Uuid;
+type Store = indexmap::IndexMap<TodoId, Todo>;
 
 macro_rules! generate_query {
     ($query:ident) => {
@@ -35,12 +35,12 @@ generate_query!(DeleteTodo);
 generate_query!(CreateTodo);
 generate_query!(UpdateTodo);
 
-async fn send_graphql_request<V, T>(variables: &V) -> fetch::Result<T>
+async fn send_graphql_request<V, T>(api_url: &url::Url, variables: &V) -> fetch::Result<T>
 where
     V: Serialize,
     T: for<'de> Deserialize<'de> + 'static,
 {
-    Request::new(API_URL)
+    Request::new(api_url.to_string())
         .method(Method::Post)
         .json(variables)?
         .fetch()
@@ -50,19 +50,19 @@ where
         .await
 }
 
-struct Model {
-    base_url: Url,
+pub struct Model {
+    api_url: url::Url,
     data: Data,
     refs: Refs,
+    session: session::Model,
 }
 
 #[derive(Default, Serialize, Deserialize)]
 struct Data {
-    todos: IndexMap<TodoId, Todo>,
+    todos: Store,
     filter: TodoFilter,
     new_todo_title: String,
     editing_todo: Option<EditingTodo>,
-    user: Option<String>,
 }
 
 #[derive(Default)]
@@ -118,7 +118,7 @@ impl TodoFilter {
     }
 }
 
-enum Msg {
+pub enum Msg {
     TodosFetched(fetch::Result<Response<get_todos::ResponseData>>),
     UrlChanged(subs::UrlChanged),
 
@@ -142,9 +142,7 @@ enum Msg {
     EditingTodoSaved(fetch::Result<Response<update_todo::ResponseData>>),
     CancelTodoEdit,
 
-    Login(),
-    LoggedIn(Option<auth::Claims>),
-    Logout(),
+    Session(session::Msg),
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -186,9 +184,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             for (id, todo) in &data.todos {
                 if todo.completed {
                     let vars = delete_todo::Variables { id: id.to_string() };
-                    orders.skip().perform_cmd(async {
+                    let api_url = model.api_url.clone();
+                    orders.skip().perform_cmd(async move {
                         let request = DeleteTodo::build_query(vars);
-                        let response = send_graphql_request(&request).await;
+                        let response = send_graphql_request(&api_url, &request).await;
                         TodoRemoved(response)
                     });
                 }
@@ -200,9 +199,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let vars = create_todo::Variables {
                     title: mem::take(&mut data.new_todo_title),
                 };
-                orders.skip().perform_cmd(async {
+                let api_url = model.api_url.clone();
+                orders.skip().perform_cmd(async move {
                     let request = CreateTodo::build_query(vars);
-                    let response = send_graphql_request(&request).await;
+                    let response = send_graphql_request(&api_url, &request).await;
                     NewTodoCreated(response)
                 });
             }
@@ -229,9 +229,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     title: Some(todo.title.clone()),
                     completed: Some(!todo.completed),
                 };
-                orders.skip().perform_cmd(async {
+                let api_url = model.api_url.clone();
+                orders.skip().perform_cmd(async move {
                     let request = UpdateTodo::build_query(vars);
-                    let response = send_graphql_request(&request).await;
+                    let response = send_graphql_request(&api_url, &request).await;
                     TodoToggled(response)
                 });
             }
@@ -260,9 +261,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
         RemoveTodo(todo_id) => {
             let id = todo_id.to_string();
-            orders.skip().perform_cmd(async {
+            let api_url = model.api_url.clone();
+            orders.skip().perform_cmd(async move {
                 let request = DeleteTodo::build_query(delete_todo::Variables { id });
-                let response = send_graphql_request(&request).await;
+                let response = send_graphql_request(&api_url, &request).await;
                 TodoRemoved(response)
             });
         }
@@ -304,9 +306,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     title: Some(todo.title),
                     completed: None,
                 };
-                orders.skip().perform_cmd(async {
+                let api_url = model.api_url.clone();
+                orders.skip().perform_cmd(async move {
                     let request = UpdateTodo::build_query(vars);
-                    let response = send_graphql_request(&request).await;
+                    let response = send_graphql_request(&api_url, &request).await;
                     EditingTodoSaved(response)
                 });
             }
@@ -327,37 +330,14 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             data.editing_todo = None;
         }
 
-        Login() => {
-            if let Ok(auth_url) = auth::get_login_url() {
-                window()
-                    .open_with_url_and_target(auth_url.to_string().as_str(), "_self")
-                    .expect("couldn't open window");
-            }
-            orders.skip();
-        }
-        LoggedIn(Some(claims)) => {
-            data.user = Some(claims.name);
-            Url::new()
-                .set_path(model.base_url.hash_path())
-                .go_and_replace();
-        }
-        LoggedIn(None) => {
-            data.user = None;
-        }
-
-        Logout() => {
-            if let Ok(()) = auth::logout() {
-                LocalStorage::remove(STORAGE_KEY).expect("problem removing key from local storage");
-                data.user = None;
-            }
-        }
+        Session(msg) => session::update(msg, &mut model.session, orders),
     }
 }
 
 fn view(model: &Model) -> impl IntoNodes<Msg> {
     let data = &model.data;
     nodes![
-        view_header(&data.new_todo_title, &data.user),
+        view_header(&data.new_todo_title, &model.session.user),
         if data.todos.is_empty() {
             vec![]
         } else {
@@ -377,7 +357,7 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
 fn view_header(new_todo_title: &str, user: &Option<String>) -> Node<Msg> {
     header![
         C!["header"],
-        view_nav(user),
+        session::view(user),
         h1!["todos"],
         input![
             C!["new-todo"],
@@ -394,34 +374,8 @@ fn view_header(new_todo_title: &str, user: &Option<String>) -> Node<Msg> {
     ]
 }
 
-fn view_nav(user: &Option<String>) -> Node<Msg> {
-    nav![
-        C!["auth-text"],
-        if let Some(user) = user {
-            nodes![
-                span![format!("{} ", user)],
-                a![
-                    C!["auth-link"],
-                    mouse_ev(Ev::Click, |_| Msg::Logout()),
-                    "logout"
-                ]
-            ]
-        } else {
-            nodes![
-                span!["Please "],
-                a![
-                    C!["auth-link"],
-                    mouse_ev(Ev::Click, |_| Msg::Login()),
-                    "login"
-                ],
-                span![" to modify todos"]
-            ]
-        },
-    ]
-}
-
 fn view_main(
-    todos: &IndexMap<TodoId, Todo>,
+    todos: &Store,
     filter: TodoFilter,
     editing_todo: &Option<EditingTodo>,
     editing_todo_input: &ElRef<HtmlInputElement>,
@@ -445,7 +399,7 @@ fn view_main(
 }
 
 fn view_todos(
-    todos: &IndexMap<TodoId, Todo>,
+    todos: &Store,
     filter: TodoFilter,
     editing_todo: &Option<EditingTodo>,
     editing_todo_input: &ElRef<HtmlInputElement>,
@@ -483,21 +437,24 @@ fn view_todo(
                    At::Type => "checkbox",
                    At::Checked => todo.completed.as_at_value()
                 },
-                ev(
-                    Ev::Change,
-                    enc!((todo_id) move |_| Msg::ToggleTodo(todo_id))
-                )
+                ev(Ev::Change, {
+                    let id = *todo_id;
+                    move |_| Msg::ToggleTodo(id)
+                })
             ],
             label![
-                ev(
-                    Ev::DblClick,
-                    enc!((todo_id) move |_| Msg::StartTodoEdit(todo_id))
-                ),
+                ev(Ev::DblClick, {
+                    let id = *todo_id;
+                    move |_| Msg::StartTodoEdit(id)
+                }),
                 &todo.title
             ],
             button![
                 C!["destroy"],
-                ev(Ev::Click, enc!((todo_id) move |_| Msg::RemoveTodo(todo_id)))
+                ev(Ev::Click, {
+                    let id = *todo_id;
+                    move |_| Msg::RemoveTodo(id)
+                })
             ]
         ],
         match editing_todo {
@@ -522,7 +479,7 @@ fn view_todo(
     ]
 }
 
-fn view_footer(todos: &IndexMap<TodoId, Todo>, filter: TodoFilter) -> Node<Msg> {
+fn view_footer(todos: &Store, filter: TodoFilter) -> Node<Msg> {
     let active_count = todos.values().filter(|todo| !todo.completed).count();
 
     footer![
@@ -560,7 +517,7 @@ fn view_filter(title: &str, filter: TodoFilter, current_filter: TodoFilter) -> N
     ]]
 }
 
-fn view_clear_completed(todos: &IndexMap<TodoId, Todo>) -> Option<Node<Msg>> {
+fn view_clear_completed(todos: &Store) -> Option<Node<Msg>> {
     let completed_count = todos.values().filter(|todo| todo.completed).count();
 
     IF!(completed_count > 0 => {
@@ -572,46 +529,43 @@ fn view_clear_completed(todos: &IndexMap<TodoId, Todo>) -> Option<Node<Msg>> {
     })
 }
 
-fn get_claims(url: &Url) -> anyhow::Result<Option<auth::Claims>> {
-    if let Ok(auth_response) = LocalStorage::get(STORAGE_KEY) {
-        let claims = auth::get_claims(&auth_response)?;
-        return Ok(Some(claims));
-    } else {
-        let url = url.to_string();
-        let url = url
-            .strip_prefix("/#")
-            .ok_or_else(|| anyhow!("url doesn't start with \"/#\""))?;
-        if let Ok(auth_response) = serde_urlencoded::from_str::<auth::AuthResponse>(url) {
-            let claims = auth::get_claims(&auth_response)?;
-            LocalStorage::insert(STORAGE_KEY, &auth_response)
-                .map_err(|e| anyhow!("cannot insert into localstorage {:?}", e))?;
-            return Ok(Some(claims));
-        }
+fn get_cookie(name: &str, default: &str) -> String {
+    match cookies() {
+        Some(jar) => match jar.get(name) {
+            Some(cookie) => cookie.value().to_string(),
+            None => default.to_string(),
+        },
+        None => default.to_string(),
     }
-    Ok(None)
 }
 
 fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
-    match get_claims(&url) {
-        Ok(claims) => {
-            orders.perform_cmd(async move { Msg::LoggedIn(claims) });
-        }
-        Err(e) => error!(e),
+    session::after_mount(&url, orders);
+
+    let api_url =
+        url::Url::parse(&get_cookie("api_url", DEFAULT_API_URL)).expect("Cannot parse api_url");
+    let redirect_url = url::Url::parse(&get_cookie("redirect_url", DEFAULT_REDIRECT_URL))
+        .expect("Cannot parse api_url");
+
+    let model = Model {
+        api_url,
+
+        data: Data::default(),
+        refs: Refs::default(),
+        session: session::Model::new(url.to_hash_base_url(), redirect_url, None),
     };
-    orders.perform_cmd(async {
+
+    let api_url = model.api_url.clone();
+    orders.perform_cmd(async move {
         let request = GetTodos::build_query(get_todos::Variables);
-        let response = send_graphql_request(&request).await;
+        let response = send_graphql_request(&api_url, &request).await;
         Msg::TodosFetched(response)
     });
     orders
         .subscribe(Msg::UrlChanged)
-        .notify(subs::UrlChanged(url.clone()));
+        .notify(subs::UrlChanged(url));
 
-    AfterMount::new(Model {
-        base_url: url.to_hash_base_url(),
-        data: Data::default(),
-        refs: Refs::default(),
-    })
+    AfterMount::new(model)
 }
 
 #[wasm_bindgen(start)]

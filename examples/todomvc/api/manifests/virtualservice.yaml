@@ -1,0 +1,20 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: todomvc-api
+spec:
+  hosts:
+    - todo.red-badger.com
+  gateways:
+    - istio-system/ingressgateway
+  http:
+    - match:
+        - uri:
+            prefix: "/graphql"
+        - uri:
+            prefix: "/graphiql"
+      route:
+        - destination:
+            port:
+              number: 80
+            host: todomvc-api

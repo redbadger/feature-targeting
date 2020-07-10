@@ -1,0 +1,7 @@
+namespace: todomvc-api
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - virtualservice.yaml

@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todomvc-api
+  labels:
+    app: todomvc-api
+spec:
+  selector:
+    matchLabels:
+      app: todomvc-api
+  template:
+    metadata:
+      labels:
+        app: todomvc-api
+    spec:
+      containers:
+        - name: todomvc-api
+          image: todomvc_api
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATABASE_URL
+              value: postgres://stuartharris@host.docker.internal/todos
+          ports:
+            - containerPort: 3030
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"

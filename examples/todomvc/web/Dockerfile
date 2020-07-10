@@ -2,12 +2,12 @@ FROM rust:1.44.1 AS build
 
 RUN rustup component add rustfmt clippy
 
-COPY Cargo.toml Cargo.lock ./
+COPY server/Cargo.toml server/Cargo.lock /
 
 RUN mkdir -p ./src/ && echo 'fn main() {}' >./src/main.rs && echo '' >./src/lib.rs
-RUN cargo build --release && rm -rf ./target/release/.fingerprint/feature_targeting_operator-*
+RUN cargo build --release && rm -rf ./target/release/.fingerprint/todomvc_web_server-*
 
-COPY src ./src
+COPY server/src src
 
 RUN cargo clippy --release -- -D warnings && \
     cargo test --release && \
@@ -17,20 +17,22 @@ RUN cargo clippy --release -- -D warnings && \
 FROM debian:buster-slim as release
 
 RUN apt-get update && apt-get install -y \
-    openssl \
-    ca-certificates \
     tini \
-    ;
+    && rm -rf /var/lib/apt/lists/*
 
 RUN useradd svc
 USER svc
 
+COPY client/index.html /client/
+COPY client/pkg/todomvc_web_client.js /client/pkg/
+COPY client/pkg/todomvc_web_client_bg.wasm /client/pkg/
+COPY client/public /client/public/
+
 COPY --chown=svc --from=build \
-    /target/release/feature_targeting_operator \
-    /
+    /target/release/todomvc_web_server \
+    /server/
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
 EXPOSE 8080
-ENV RUSTLOG=roperator=debug
-CMD ["/feature_targeting_operator"]
+CMD ["/server/todomvc_web_server"]
