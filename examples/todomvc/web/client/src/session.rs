@@ -1,4 +1,4 @@
-use super::{auth, Model};
+use super::auth;
 use anyhow::anyhow;
 use seed::{prelude::*, *};
 
@@ -10,12 +10,27 @@ pub enum Msg {
     Logout,
 }
 
+pub struct Model {
+    pub base_url: Url,
+    pub redirect_url: url::Url,
+    pub user: Option<String>,
+}
+
+impl Model {
+    pub fn new(base_url: Url, redirect_url: url::Url, user: Option<String>) -> Self {
+        Self {
+            base_url,
+            redirect_url,
+            user,
+        }
+    }
+}
+
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<super::Msg>) {
-    let data = &mut model.data;
     use Msg::*;
     match msg {
         Login => {
-            if let Ok(url) = auth::get_login_url() {
+            if let Ok(url) = auth::get_login_url(&model.redirect_url) {
                 window()
                     .open_with_url_and_target(url.to_string().as_str(), "_self")
                     .expect("couldn't open window");
@@ -23,25 +38,25 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<super::Msg>)
             orders.skip();
         }
         LoggedIn(Some(claims)) => {
-            data.user = Some(claims.name);
+            model.user = Some(claims.name);
             Url::new()
                 .set_path(model.base_url.hash_path())
                 .go_and_replace();
         }
         LoggedIn(None) => {
-            data.user = None;
+            model.user = None;
         }
 
         Logout => {
             if let Ok(()) = auth::logout() {
                 LocalStorage::remove(STORAGE_KEY).expect("problem removing key from local storage");
-                data.user = None;
+                model.user = None;
             }
         }
     }
 }
 
-pub fn view_nav(user: &Option<String>) -> Node<super::Msg> {
+pub fn view(user: &Option<String>) -> Node<super::Msg> {
     nav![
         C!["auth-text"],
         if let Some(user) = user {

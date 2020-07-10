@@ -12,6 +12,7 @@ mod session;
 const ENTER_KEY: u32 = 13;
 const ESC_KEY: u32 = 27;
 const DEFAULT_API_URL: &str = "http://localhost:3030/graphql";
+const DEFAULT_REDIRECT_URL: &str = "http://localhost:8080";
 const ACTIVE: &str = "active";
 const COMPLETED: &str = "completed";
 
@@ -51,9 +52,9 @@ where
 
 pub struct Model {
     api_url: url::Url,
-    base_url: Url,
     data: Data,
     refs: Refs,
+    session: session::Model,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -62,7 +63,6 @@ struct Data {
     filter: TodoFilter,
     new_todo_title: String,
     editing_todo: Option<EditingTodo>,
-    user: Option<String>,
 }
 
 #[derive(Default)]
@@ -330,14 +330,14 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             data.editing_todo = None;
         }
 
-        Session(msg) => session::update(msg, model, orders),
+        Session(msg) => session::update(msg, &mut model.session, orders),
     }
 }
 
 fn view(model: &Model) -> impl IntoNodes<Msg> {
     let data = &model.data;
     nodes![
-        view_header(&data.new_todo_title, &data.user),
+        view_header(&data.new_todo_title, &model.session.user),
         if data.todos.is_empty() {
             vec![]
         } else {
@@ -357,7 +357,7 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
 fn view_header(new_todo_title: &str, user: &Option<String>) -> Node<Msg> {
     header![
         C!["header"],
-        session::view_nav(user),
+        session::view(user),
         h1!["todos"],
         input![
             C!["new-todo"],
@@ -529,23 +529,30 @@ fn view_clear_completed(todos: &Store) -> Option<Node<Msg>> {
     })
 }
 
+fn get_cookie(name: &str, default: &str) -> String {
+    match cookies() {
+        Some(jar) => match jar.get(name) {
+            Some(cookie) => cookie.value().to_string(),
+            None => default.to_string(),
+        },
+        None => default.to_string(),
+    }
+}
+
 fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
     session::after_mount(&url, orders);
 
-    let api_url = match cookies() {
-        Some(jar) => match jar.get("api_url") {
-            Some(cookie) => cookie.value().to_string(),
-            None => DEFAULT_API_URL.to_string(),
-        },
-        None => DEFAULT_API_URL.to_string(),
-    };
-    let api_url = url::Url::parse(&api_url).expect("Cannot parse api_url");
+    let api_url =
+        url::Url::parse(&get_cookie("api_url", DEFAULT_API_URL)).expect("Cannot parse api_url");
+    let redirect_url = url::Url::parse(&get_cookie("redirect_url", DEFAULT_REDIRECT_URL))
+        .expect("Cannot parse api_url");
 
     let model = Model {
         api_url,
-        base_url: url.to_hash_base_url(),
+
         data: Data::default(),
         refs: Refs::default(),
+        session: session::Model::new(url.to_hash_base_url(), redirect_url, None),
     };
 
     let api_url = model.api_url.clone();

@@ -1122,6 +1122,7 @@ dependencies = [
  "anyhow",
  "async-std",
  "tide",
+ "url",
 ]
 
 [[package]]

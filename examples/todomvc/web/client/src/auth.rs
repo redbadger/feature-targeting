@@ -26,7 +26,7 @@ pub struct AuthResponse {
     pub prompt: String,
 }
 
-pub fn get_login_url() -> Result<Url> {
+pub fn get_login_url(redirect_url: &Url) -> Result<Url> {
     let oauth2_endpoint = Url::parse_with_params(
         "https://accounts.google.com/o/oauth2/v2/auth",
         &[
@@ -34,7 +34,7 @@ pub fn get_login_url() -> Result<Url> {
                 "client_id",
                 "370114826193-18ss0t0cqlqqredmifhuu27itlpajg9s.apps.googleusercontent.com",
             ),
-            ("redirect_uri", "http://localhost:8080"),
+            ("redirect_uri", redirect_url.as_str()),
             ("response_type", "token id_token"),
             ("nonce", Uuid::new_v4().to_string().as_ref()),
             ("scope", "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid"),

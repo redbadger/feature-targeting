@@ -6,18 +6,37 @@ use tide::{
     },
     Body, Request, Response,
 };
+use url::Url;
 
 const HOME: &str = "../client/index.html";
 const PKG: &str = "../client/pkg";
 const PUBLIC: &str = "../client/public";
 
+struct State {
+    api_url: Url,
+    redirect_url: Url,
+}
+
+impl State {
+    fn new(api_url: Url, redirect_url: Url) -> Self {
+        Self {
+            api_url,
+            redirect_url,
+        }
+    }
+}
+
 #[async_std::main]
 async fn main() -> Result<()> {
-    let api_url = std::env::var("API_URL").context("API_URL env var not found")?;
-
     tide::log::start();
 
-    let mut app = tide::with_state(api_url);
+    let api_url = Url::parse(&std::env::var("API_URL").context("API_URL env var not found")?)
+        .expect("can't parse API_URL");
+    let redirect_url =
+        Url::parse(&std::env::var("REDIRECT_URL").context("REDIRECT_URL env var not found")?)
+            .expect("can't parse REDIRECT_URL");
+
+    let mut app = tide::with_state(State::new(api_url, redirect_url));
 
     app.at("/").get(home);
     app.at("/active").get(home);
@@ -31,14 +50,20 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn home(req: Request<String>) -> tide::Result {
+async fn home(req: Request<State>) -> tide::Result {
     let mut response = Response::new(tide::StatusCode::Ok);
 
     let body = Body::from_file(HOME).await?;
     response.set_body(body);
 
-    let api_url = req.state().clone();
-    let cookie = Cookie::build("api_url", api_url)
+    let state = req.state();
+    let cookie = Cookie::build("api_url", state.api_url.to_string())
+        .path("/")
+        .same_site(SameSite::Strict)
+        .finish();
+    response.insert_cookie(cookie);
+
+    let cookie = Cookie::build("redirect_url", state.redirect_url.to_string())
         .path("/")
         .same_site(SameSite::Strict)
         .finish();

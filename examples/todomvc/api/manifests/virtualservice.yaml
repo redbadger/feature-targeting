@@ -4,11 +4,16 @@ metadata:
   name: todomvc-api
 spec:
   hosts:
-    - api.todomvc.localhost
+    - todo.red-badger.com
   gateways:
     - istio-system/ingressgateway
   http:
-    - route:
+    - match:
+        - uri:
+            prefix: "/graphql"
+        - uri:
+            prefix: "/graphiql"
+      route:
         - destination:
             port:
               number: 80

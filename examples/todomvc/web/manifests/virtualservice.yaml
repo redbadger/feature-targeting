@@ -4,7 +4,7 @@ metadata:
   name: todomvc-web
 spec:
   hosts:
-    - web.todomvc.localhost
+    - todo.red-badger.com
   gateways:
     - istio-system/ingressgateway
   http:

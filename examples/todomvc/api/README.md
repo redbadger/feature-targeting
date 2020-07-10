@@ -80,4 +80,4 @@ There are a set of [manifests](./manifests) in the `manifests` directory. To ins
 (cd manifests && make)
 ```
 
-You should be able to access the API at http://api.todomvc.localhost/graphql (but you may need to add `api.todomvc.localhost` to your hosts file in order to resolve).
+You should be able to access the API at http://todo.red-badger.com/graphql (but you may need to add `todo.red-badger.com` to your hosts file in order to resolve).
