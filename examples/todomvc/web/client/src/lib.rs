@@ -6,7 +6,6 @@ use std::mem;
 use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
-mod auth;
 mod session;
 
 const ENTER_KEY: u32 = 13;
@@ -357,7 +356,7 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
 fn view_header(new_todo_title: &str, user: &Option<String>) -> Node<Msg> {
     header![
         C!["header"],
-        session::view(user),
+        session::view(user, Msg::Session),
         h1!["todos"],
         input![
             C!["new-todo"],
@@ -540,7 +539,7 @@ fn get_cookie(name: &str, default: &str) -> String {
 }
 
 fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
-    session::after_mount(&url, orders);
+    session::after_mount(&url, orders, Msg::Session);
 
     let api_url =
         url::Url::parse(&get_cookie("api_url", DEFAULT_API_URL)).expect("Cannot parse api_url");

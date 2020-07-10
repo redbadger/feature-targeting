@@ -1,12 +1,14 @@
-use super::auth;
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
+use auth::{AuthResponse, Claims};
 use seed::{prelude::*, *};
+
+mod auth;
 
 const STORAGE_KEY: &str = "todomvc-session";
 
 pub enum Msg {
     Login,
-    LoggedIn(Option<auth::Claims>),
+    LoggedIn(Option<Claims>),
     Logout,
 }
 
@@ -26,7 +28,7 @@ impl Model {
     }
 }
 
-pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<super::Msg>) {
+pub fn update<M: 'static>(msg: Msg, model: &mut Model, orders: &mut impl Orders<M>) {
     use Msg::*;
     match msg {
         Login => {
@@ -56,7 +58,10 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<super::Msg>)
     }
 }
 
-pub fn view(user: &Option<String>) -> Node<super::Msg> {
+pub fn view<M: 'static>(
+    user: &Option<String>,
+    to_msg: impl FnOnce(Msg) -> M + Clone + 'static,
+) -> Node<M> {
     nav![
         C!["auth-text"],
         if let Some(user) = user {
@@ -64,7 +69,7 @@ pub fn view(user: &Option<String>) -> Node<super::Msg> {
                 span![format!("{} ", user)],
                 a![
                     C!["auth-link"],
-                    mouse_ev(Ev::Click, |_| super::Msg::Session(Msg::Logout)),
+                    mouse_ev(Ev::Click, |_| to_msg(Msg::Logout)),
                     "logout"
                 ]
             ]
@@ -73,7 +78,7 @@ pub fn view(user: &Option<String>) -> Node<super::Msg> {
                 span!["Please "],
                 a![
                     C!["auth-link"],
-                    mouse_ev(Ev::Click, |_| super::Msg::Session(Msg::Login)),
+                    mouse_ev(Ev::Click, |_| to_msg(Msg::Login)),
                     "login"
                 ],
                 span![" to modify todos"]
@@ -82,7 +87,7 @@ pub fn view(user: &Option<String>) -> Node<super::Msg> {
     ]
 }
 
-pub fn get_claims(url: &Url) -> anyhow::Result<Option<auth::Claims>> {
+pub fn get_claims(url: &Url) -> Result<Option<Claims>> {
     if let Ok(response) = LocalStorage::get(STORAGE_KEY) {
         let claims = auth::get_claims(&response)?;
         return Ok(Some(claims));
@@ -91,20 +96,25 @@ pub fn get_claims(url: &Url) -> anyhow::Result<Option<auth::Claims>> {
         let url = url
             .strip_prefix("/#")
             .ok_or_else(|| anyhow!("url doesn't start with \"/#\""))?;
-        if let Ok(response) = serde_urlencoded::from_str::<auth::AuthResponse>(url) {
+        if let Ok(response) = serde_urlencoded::from_str::<AuthResponse>(url) {
             let claims = auth::get_claims(&response)?;
             LocalStorage::insert(STORAGE_KEY, &response)
                 .map_err(|e| anyhow!("cannot insert into localstorage {:?}", e))?;
             return Ok(Some(claims));
         }
     }
+
     Ok(None)
 }
 
-pub fn after_mount(url: &Url, orders: &mut impl Orders<super::Msg>) {
+pub fn after_mount<M: 'static>(
+    url: &Url,
+    orders: &mut impl Orders<M>,
+    to_msg: impl FnOnce(Msg) -> M + Clone + 'static,
+) {
     match get_claims(url) {
         Ok(claims) => {
-            orders.perform_cmd(async move { super::Msg::Session(Msg::LoggedIn(claims)) });
+            orders.perform_cmd(async move { to_msg(Msg::LoggedIn(claims)) });
         }
         Err(e) => error!(e),
     };
