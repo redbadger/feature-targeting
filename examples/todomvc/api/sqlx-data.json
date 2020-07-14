@@ -1,107 +1,177 @@
 {
   "db": "PostgreSQL",
-  "0560cfb16534e6281064ea72e86dfd8835780e3f224809a0215a4c9804428274": {
-    "query": "DELETE FROM todos\nWHERE id = $1\nRETURNING id,\n    title,\n    completed\n",
+  "45027d9bead4c182ce5cf341a20452926574543cb35040c3a37fd60b0c5c67df": {
+    "query": "SELECT id,\n    auth_subject,\n    title,\n    completed\nFROM todos\nWHERE id = $1\n    AND auth_subject = $2\n",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
           "name": "id",
           "type_info": "Uuid",
-          "relation_id": 32792,
+          "relation_id": 40970,
           "relation_attribute_no": 1
         },
         {
           "ordinal": 1,
-          "name": "title",
-          "type_info": "Text",
-          "relation_id": 32792,
+          "name": "auth_subject",
+          "type_info": "Varchar",
+          "relation_id": 40970,
           "relation_attribute_no": 2
         },
         {
           "ordinal": 2,
+          "name": "title",
+          "type_info": "Text",
+          "relation_id": 40970,
+          "relation_attribute_no": 3
+        },
+        {
+          "ordinal": 3,
           "name": "completed",
           "type_info": "Bool",
-          "relation_id": 32792,
-          "relation_attribute_no": 3
+          "relation_id": 40970,
+          "relation_attribute_no": 4
         }
       ],
       "parameters": {
         "Left": [
-          "Uuid"
+          "Uuid",
+          "Text"
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false
       ]
     }
   },
-  "0e6b85681697190970e0fc481a73c358d54d85fb3ce9f348621cfbf359ef2395": {
-    "query": "UPDATE todos\nSET title = COALESCE($1, title),\n    completed = COALESCE($2, completed)\nWHERE id = $3\nRETURNING id,\n    title,\n    completed\n",
+  "778c325e117dcfd21892b1e88e49054389d06038349dd9a16c2a99a6fd904291": {
+    "query": "INSERT INTO todos (auth_subject, title)\nVALUES ($1, $2)\nRETURNING id,\n    auth_subject,\n    title,\n    completed\n",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
           "name": "id",
           "type_info": "Uuid",
-          "relation_id": 32792,
+          "relation_id": 40970,
           "relation_attribute_no": 1
         },
         {
           "ordinal": 1,
-          "name": "title",
-          "type_info": "Text",
-          "relation_id": 32792,
+          "name": "auth_subject",
+          "type_info": "Varchar",
+          "relation_id": 40970,
           "relation_attribute_no": 2
         },
         {
           "ordinal": 2,
+          "name": "title",
+          "type_info": "Text",
+          "relation_id": 40970,
+          "relation_attribute_no": 3
+        },
+        {
+          "ordinal": 3,
           "name": "completed",
           "type_info": "Bool",
-          "relation_id": 32792,
-          "relation_attribute_no": 3
+          "relation_id": 40970,
+          "relation_attribute_no": 4
         }
       ],
       "parameters": {
         "Left": [
-          "Text",
-          "Bool",
-          "Uuid"
+          "Varchar",
+          "Text"
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false
       ]
     }
   },
-  "12b35a75f2e88c33b122c6b018a941122fa1ff1f8758b5e095acda5dc04f01cd": {
-    "query": "INSERT INTO todos (title)\nVALUES ($1)\nRETURNING id,\n    title,\n    completed\n",
+  "8a34860f6b50058050eaf923aef66ac4d8074da67d76f36696f8ef0aea1e55a6": {
+    "query": "DELETE FROM todos\nWHERE id = $1\n    AND auth_subject = $2\nRETURNING id,\n    auth_subject,\n    title,\n    completed\n",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
           "name": "id",
           "type_info": "Uuid",
-          "relation_id": 32792,
+          "relation_id": 40970,
           "relation_attribute_no": 1
         },
         {
           "ordinal": 1,
-          "name": "title",
-          "type_info": "Text",
-          "relation_id": 32792,
+          "name": "auth_subject",
+          "type_info": "Varchar",
+          "relation_id": 40970,
           "relation_attribute_no": 2
         },
         {
           "ordinal": 2,
+          "name": "title",
+          "type_info": "Text",
+          "relation_id": 40970,
+          "relation_attribute_no": 3
+        },
+        {
+          "ordinal": 3,
           "name": "completed",
           "type_info": "Bool",
-          "relation_id": 32792,
+          "relation_id": 40970,
+          "relation_attribute_no": 4
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "eecdc6e5c150281fa57a6dfc15b58f3bab5c4d28c2316d18a73b51acf313dd79": {
+    "query": "SELECT id,\n    auth_subject,\n    title,\n    completed\nFROM todos\nWHERE auth_subject = $1\nORDER BY id\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid",
+          "relation_id": 40970,
+          "relation_attribute_no": 1
+        },
+        {
+          "ordinal": 1,
+          "name": "auth_subject",
+          "type_info": "Varchar",
+          "relation_id": 40970,
+          "relation_attribute_no": 2
+        },
+        {
+          "ordinal": 2,
+          "name": "title",
+          "type_info": "Text",
+          "relation_id": 40970,
           "relation_attribute_no": 3
+        },
+        {
+          "ordinal": 3,
+          "name": "completed",
+          "type_info": "Bool",
+          "relation_id": 40970,
+          "relation_attribute_no": 4
         }
       ],
       "parameters": {
@@ -112,78 +182,54 @@
       "nullable": [
         false,
         false,
+        false,
         false
       ]
     }
   },
-  "4752b9c0c44424a1e72216ed282b8db364a4d28e5c61ec025af2d48f1c268473": {
-    "query": "SELECT id,\n    title,\n    completed\nFROM todos\nORDER BY id\n",
+  "f90107b3b7d22b7fbb95555c2617e555b7e4328b5255fbb988eb7ca1a166e706": {
+    "query": "UPDATE todos\nSET auth_subject = $2,\n    title = COALESCE($3, title),\n    completed = COALESCE($4, completed)\nWHERE id = $1\nRETURNING id,\n    auth_subject,\n    title,\n    completed\n",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
           "name": "id",
           "type_info": "Uuid",
-          "relation_id": 32792,
+          "relation_id": 40970,
           "relation_attribute_no": 1
         },
         {
           "ordinal": 1,
-          "name": "title",
-          "type_info": "Text",
-          "relation_id": 32792,
+          "name": "auth_subject",
+          "type_info": "Varchar",
+          "relation_id": 40970,
           "relation_attribute_no": 2
         },
         {
           "ordinal": 2,
-          "name": "completed",
-          "type_info": "Bool",
-          "relation_id": 32792,
-          "relation_attribute_no": 3
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "5ef9aaebce2d75ac3af7dc04d63507262869bbb63db21afaf726a3d5a4699b2c": {
-    "query": "SELECT id,\n    title,\n    completed\nFROM todos\nWHERE id = $1\n",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Uuid",
-          "relation_id": 32792,
-          "relation_attribute_no": 1
-        },
-        {
-          "ordinal": 1,
           "name": "title",
           "type_info": "Text",
-          "relation_id": 32792,
-          "relation_attribute_no": 2
+          "relation_id": 40970,
+          "relation_attribute_no": 3
         },
         {
-          "ordinal": 2,
+          "ordinal": 3,
           "name": "completed",
           "type_info": "Bool",
-          "relation_id": 32792,
-          "relation_attribute_no": 3
+          "relation_id": 40970,
+          "relation_attribute_no": 4
         }
       ],
       "parameters": {
         "Left": [
-          "Uuid"
+          "Uuid",
+          "Varchar",
+          "Text",
+          "Bool"
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false

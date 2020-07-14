@@ -28,22 +28,16 @@ We will also be updating this soon to demonstrate feature targeting capabilities
   cargo install wasm-pack
   ```
 
-- if you don't have a static webserver:
-
-  ```sh
-  brew install httpserver
-  ```
-
 - build and serve:
 
   ```sh
-  wasm-pack build --target web && httpserver
+  make
   ```
 
 ## To build a Docker image
 
 ```sh
-make
+make docker
 ```
 
 ## Running in Kubernetes
