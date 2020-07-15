@@ -1,10 +1,15 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
+use oauth2::{
+    basic::BasicClient, AuthUrl, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl,
+    Scope, TokenUrl,
+};
+use structopt::StructOpt;
 use tide::{
     http::{
         cookies::{Cookie, SameSite},
         mime,
     },
-    Body, Request, Response,
+    Body, Redirect, Request, Response,
 };
 use url::Url;
 
@@ -12,58 +17,52 @@ const HOME: &str = "../client/index.html";
 const PKG: &str = "../client/pkg";
 const PUBLIC: &str = "../client/public";
 
-struct State {
+#[derive(Debug, StructOpt)]
+struct Config {
+    #[structopt(long, env = "API_URL")]
     api_url: Url,
+    #[structopt(long, env = "REDIRECT_URL")]
     redirect_url: Url,
+    #[structopt(long, parse(from_str=client_id_from_str), env = "CLIENT_ID")]
+    client_id: ClientId,
+    #[structopt(long, parse(from_str=client_secret_from_str), env = "CLIENT_SECRET", hide_env_values = true)]
+    client_secret: ClientSecret,
+    #[structopt(long, parse(try_from_str=auth_url_from_str), env = "AUTH_URL")]
+    auth_url: AuthUrl,
+    #[structopt(long, parse(try_from_str=token_url_from_str), env = "TOKEN_URL")]
+    token_url: TokenUrl,
 }
 
-impl State {
-    fn new(api_url: Url, redirect_url: Url) -> Self {
-        Self {
-            api_url,
-            redirect_url,
-        }
-    }
+fn client_id_from_str(s: &str) -> ClientId {
+    ClientId::new(s.to_string())
 }
 
-#[async_std::main]
-async fn main() -> Result<()> {
-    tide::log::start();
-
-    let api_url = Url::parse(&std::env::var("API_URL").context("API_URL env var not found")?)
-        .expect("can't parse API_URL");
-    let redirect_url =
-        Url::parse(&std::env::var("REDIRECT_URL").context("REDIRECT_URL env var not found")?)
-            .expect("can't parse REDIRECT_URL");
-
-    let mut app = tide::with_state(State::new(api_url, redirect_url));
-
-    app.at("/").get(home);
-    app.at("/active").get(home);
-    app.at("/completed").get(home);
-    app.at("/pkg").serve_dir(PKG)?;
-    app.at("/public").serve_dir(PUBLIC)?;
-    app.at("/healthz").get(|_| async { Ok(Response::new(204)) });
-
-    app.listen("0.0.0.0:8080").await?;
-
-    Ok(())
+fn client_secret_from_str(s: &str) -> ClientSecret {
+    ClientSecret::new(s.to_string())
 }
 
-async fn home(req: Request<State>) -> tide::Result {
+fn auth_url_from_str(s: &str) -> Result<AuthUrl> {
+    Ok(AuthUrl::new(s.to_string())?)
+}
+
+fn token_url_from_str(s: &str) -> Result<TokenUrl> {
+    Ok(TokenUrl::new(s.to_string())?)
+}
+
+async fn home(req: Request<Config>) -> tide::Result {
     let mut response = Response::new(tide::StatusCode::Ok);
 
     let body = Body::from_file(HOME).await?;
     response.set_body(body);
 
-    let state = req.state();
-    let cookie = Cookie::build("api_url", state.api_url.to_string())
+    let config = req.state();
+    let cookie = Cookie::build("api_url", config.api_url.to_string())
         .path("/")
         .same_site(SameSite::Strict)
         .finish();
     response.insert_cookie(cookie);
 
-    let cookie = Cookie::build("redirect_url", state.redirect_url.to_string())
+    let cookie = Cookie::build("redirect_url", config.redirect_url.to_string())
         .path("/")
         .same_site(SameSite::Strict)
         .finish();
@@ -72,4 +71,53 @@ async fn home(req: Request<State>) -> tide::Result {
     response.set_content_type(mime::HTML);
 
     Ok(response)
+}
+
+async fn login(req: Request<Config>) -> tide::Result {
+    let config = req.state();
+
+    let client = BasicClient::new(
+        config.client_id.clone(),
+        Some(config.client_secret.clone()),
+        config.auth_url.clone(),
+        Some(config.token_url.clone()),
+    )
+    .set_redirect_url(
+        RedirectUrl::new(config.redirect_url.to_string()).expect("Invalid redirect URL"),
+    );
+
+    let (pkce_code_challenge, _pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
+
+    let (authorize_url, _csrf_state) = client
+        .authorize_url(CsrfToken::new_random)
+        .add_scope(Scope::new(
+            "https://www.googleapis.com/auth/userinfo.email".to_string(),
+        ))
+        .add_scope(Scope::new(
+            "https://www.googleapis.com/auth/userinfo.profile".to_string(),
+        ))
+        .add_scope(Scope::new("openid".to_string()))
+        .set_pkce_challenge(pkce_code_challenge)
+        .url();
+
+    Ok(Redirect::new(authorize_url.as_ref()).into())
+}
+
+#[async_std::main]
+async fn main() -> Result<()> {
+    tide::log::start();
+
+    let mut app = tide::with_state(Config::from_args());
+
+    app.at("/").get(home);
+    app.at("/active").get(home);
+    app.at("/completed").get(home);
+    app.at("/healthz").get(|_| async { Ok(Response::new(204)) });
+    app.at("/login").get(login);
+    app.at("/pkg").serve_dir(PKG)?;
+    app.at("/public").serve_dir(PUBLIC)?;
+
+    app.listen("0.0.0.0:8080").await?;
+
+    Ok(())
 }

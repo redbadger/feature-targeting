@@ -22,6 +22,26 @@ spec:
               value: http://todo.red-badger.com/graphql
             - name: REDIRECT_URL
               value: http://todo.red-badger.com
+            - name: CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth-creds
+                  key: client_id
+            - name: CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth-creds
+                  key: client_secret
+            - name: AUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: oauth-creds
+                  key: auth_uri
+            - name: TOKEN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: oauth-creds
+                  key: token_uri
           ports:
             - containerPort: 8080
           resources:

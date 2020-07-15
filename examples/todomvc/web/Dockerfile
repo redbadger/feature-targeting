@@ -17,6 +17,7 @@ RUN cargo clippy --release -- -D warnings && \
 FROM debian:buster-slim as release
 
 RUN apt-get update && apt-get install -y \
+    openssl \
     tini \
     && rm -rf /var/lib/apt/lists/*
 
