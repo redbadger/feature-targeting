@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 pub mod explicit;
+pub mod expression;
 pub mod implicit;
 
 pub fn target<'a>(
@@ -9,7 +10,11 @@ pub fn target<'a>(
     implicit_config: &implicit::Config,
 ) -> String {
     union(
-        target_explicit(request, explicit_config).as_ref(),
+        target_explicit(request, explicit_config)
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .as_ref(),
         target_implicit(request, implicit_config).as_ref(),
     )
 }
@@ -23,15 +28,12 @@ pub fn union(existing: &[&str], new: &[&str]) -> String {
     result.join(" ")
 }
 
-pub fn target_explicit<'a>(
-    request: &HashMap<&str, &'a str>,
-    config: &explicit::Config,
-) -> Vec<&'a str> {
+pub fn target_explicit(request: &HashMap<&str, &str>, config: &explicit::Config) -> Vec<String> {
     explicit::from_request(request, config)
 }
 
 pub fn target_implicit<'a>(
-    request: &HashMap<&str, &'a str>,
+    request: &HashMap<&str, &str>,
     config: &'a implicit::Config,
 ) -> Vec<&'a str> {
     implicit::from_request(request, config)
