@@ -78,7 +78,9 @@ pub fn view<M: 'static>(
                 span!["Please "],
                 a![
                     C!["auth-link"],
-                    mouse_ev(Ev::Click, |_| to_msg(Msg::Login)),
+                    attrs! {
+                        At::Href => "http://todo.red-badger.com/login"
+                    },
                     "login"
                 ],
                 span![" to modify todos"]

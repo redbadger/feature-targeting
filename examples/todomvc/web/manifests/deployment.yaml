@@ -21,7 +21,7 @@ spec:
             - name: API_URL
               value: http://todo.red-badger.com/graphql
             - name: REDIRECT_URL
-              value: http://todo.red-badger.com
+              value: http://todo.red-badger.com/callback
             - name: CLIENT_ID
               valueFrom:
                 secretKeyRef:
