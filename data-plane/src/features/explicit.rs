@@ -1,5 +1,5 @@
 use crate::features::expression::{Str, StrList};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub fn from_request(request: &HashMap<&str, &str>, config: &Config) -> Vec<String> {
@@ -16,7 +16,7 @@ pub fn from_request(request: &HashMap<&str, &str>, config: &Config) -> Vec<Strin
 }
 
 /// Configuration
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config(pub Vec<StrList>);
 
 impl Default for Config {
@@ -32,6 +32,8 @@ impl Default for Config {
 mod test {
     use super::*;
     use lazy_static::lazy_static;
+    use pretty_assertions::assert_eq as assert_eq_diff;
+    use serde_json::json;
     use std::collections::HashMap;
     use test_case::test_case;
 
@@ -70,5 +72,27 @@ mod test {
         }
 
         map
+    }
+
+    #[test]
+    fn serialises_to_json() {
+        let expected = json!([
+            {
+                "extract": {
+                    "regex": r#"f-([a-z]+)\.echo\.localhost"#,
+                    "value": { "attribute": "host" }
+                }
+            },
+            {
+                "split": {
+                    "separator": " ",
+                    "value": { "attribute": "x-features" }
+                }
+            }
+        ])
+        .to_string();
+        let actual = serde_json::to_string(&*CONFIG).unwrap();
+
+        assert_eq_diff!(actual, expected);
     }
 }
