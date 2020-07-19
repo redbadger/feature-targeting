@@ -437,6 +437,9 @@ mod test {
     #[test_case(Str::Constant("hello".into()), Ok("hello".into()))]
     #[test_case(Str::Attribute("hello".into()), Ok("world".into()))]
     #[test_case(Str::Base64(Box::new(Str::Constant("aGVsbG8=".into()))), Ok("hello".into()))]
+    #[test_case(Str::Extract { regex: r#"https?://f-([a-z]+).[a-z-]+.com/?"#.into(), value: Box::new(Str::Constant("http://f-one.hi.com".into())) }, Ok("one".into()) )]
+    #[test_case(Str::Cookie("user".into()), Ok("viktor".into()))]
+    #[test_case(Str::Cookie("friends".into()), Ok("bob,mary".into()))]
     #[test_case(Str::First(Box::new(StrList::Constant(vec!["a".into(), "b".into(), "c".into()]))), Ok("a".into()))]
     #[test_case(Str::Last(Box::new(StrList::Constant(vec!["a".into(), "b".into(), "c".into()]))), Ok("c".into()))]
     #[test_case(Str::First(Box::new(StrList::Constant(vec![]))), Err(anyhow!("List is empty.")))]
@@ -453,6 +456,7 @@ mod test {
                 "user-agent",
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36",
             ),
+            ("cookie", "balance=100; user=viktor; friends=bob,mary")
         ]
         .iter()
         .cloned()
@@ -464,12 +468,17 @@ mod test {
 
     #[test_case(StrList::Constant(vec!["a".into(), "b".into()]), Ok(vec!["a".into(), "b".into()]))]
     #[test_case(StrList::Split { separator: " ".into(), value: Str::Constant("a b".into())}, Ok(vec!["a".into(), "b".into()]))]
+    #[test_case(StrList::Extract { regex: r#"http://f-([a-z]+).[a-z-]+.com/.+\?features=([a-z,]+,?)+"#.into(), value: Box::new(Str::Attribute(":authority".into())) }, Ok(vec!["one".into(), "two,three,four".into()]) )]
     #[test_case(StrList::HttpQualityValue(Str::Attribute("accept".into())), Ok(vec!["text/html".into(), "text/plain".into(), "text/*".into(), "*/*".into()]))]
     fn evaluate_string_list_expressions(expr: StrList, expected: Result<Vec<String>>) {
         let mut request = HashMap::new();
         request.insert(
             "accept",
             "*/*;q=0.3, text/plain;q=0.7, text/html, text/*;q=0.5",
+        );
+        request.insert(
+            ":authority",
+            "http://f-one.example.com/path/x?features=two,three,four",
         );
         let actual = expr.eval(&request);
         assert_eq!(format!("{:?}", actual), format!("{:?}", expected));
