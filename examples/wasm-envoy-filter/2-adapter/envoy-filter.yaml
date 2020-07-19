@@ -31,15 +31,23 @@ spec:
                     "header_name": "x-features",
                     "explicit": [
                       {
-                        "_extract": "list",
-                        "attribute": "x-feature-override"
+                        "split": {
+                          "separator": " ",
+                          "value": {
+                            "attribute": "x-feature-override"
+                          }
+                        }
                       },
                       {
-                        "_extract": "pattern",
-                        "attribute": ":authority",
-                        "pattern": "f-*.localhost"
+                        "extract": {
+                          "regex": "f-([a-z0-9-]+)",
+                          "value": {
+                            "attribute": ":authority"
+                          }
+                        }
                       }
-                    ]
+                    ],
+                    "implicit": []
                   }
                 root_id: redbadger.feature_targeting
                 vm_config:
