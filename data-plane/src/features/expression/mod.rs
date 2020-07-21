@@ -169,11 +169,9 @@ impl StrList {
                 let value = value.eval(request)?;
                 let regex = Regex::new(regex)?;
 
-                let captures = regex.captures(&value).ok_or(anyhow!(
-                    "'{}' does not match '{}'",
-                    value,
-                    regex
-                ))?;
+                let captures = regex
+                    .captures(&value)
+                    .ok_or_else(|| anyhow!("'{}' does not match '{}'", value, regex))?;
 
                 Ok(captures
                     .iter()
@@ -254,7 +252,7 @@ impl Str {
                 regex
                     .captures(&value)
                     .and_then(|c| c.get(1).map(|m| m.as_str().to_string()))
-                    .ok_or(anyhow!("'{}' does not match '{}'", value, regex))
+                    .ok_or_else(|| anyhow!("'{}' does not match '{}'", value, regex))
             }
             Cookie(name) => get_cookie(request, name).map(|s| s.to_string()),
             Browser => map_user_agent(request, |ua| ua.name.to_string()),
@@ -305,19 +303,19 @@ where
 fn get_cookie<'a>(request: &HashMap<&str, &'a str>, name: &str) -> Result<&'a str> {
     let cookie_header = request
         .get("cookie")
-        .ok_or(anyhow!("No cookies found in request"))?;
+        .ok_or_else(|| anyhow!("No cookies found in request"))?;
 
     cookie_header
         .split("; ")
         .map(|pair| {
-            let items: Vec<_> = pair.split("=").collect();
+            let items: Vec<_> = pair.split('=').collect();
 
             (items[0], items[1])
         })
         .collect::<HashMap<_, _>>()
         .get(name)
-        .map(|it| *it)
-        .ok_or(anyhow!("Cookie {} not found", name))
+        .copied()
+        .ok_or_else(|| anyhow!("Cookie {} not found", name))
 }
 
 #[derive(Deserialize, Serialize, Debug)]

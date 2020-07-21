@@ -7,7 +7,6 @@ pub fn from_request(request: &HashMap<&str, &str>, config: &Config) -> Vec<Strin
         .0
         .iter()
         .flat_map(|x| x.eval(request).unwrap_or_else(|_| vec![]))
-        .map(|s| s)
         .collect::<Vec<_>>();
 
     features.sort();
