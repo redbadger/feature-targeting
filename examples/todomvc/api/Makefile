@@ -1,6 +1,7 @@
 .PHONY: default
 default:
-	cargo run
+	cargo run -- --database-url=postgres://stuartharris@localhost/todos
+
 
 .PHONY: docker
 docker: prepare
