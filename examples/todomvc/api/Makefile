@@ -8,5 +8,5 @@ docker: prepare
 
 .PHONY: prepare
 prepare:
-	rm sqlx-data.json
+	rm -f sqlx-data.json
 	cargo sqlx prepare -- --lib

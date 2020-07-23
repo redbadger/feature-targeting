@@ -40,6 +40,7 @@ struct UpdateTodo {
 
 struct AuthSubject(String);
 
+#[derive(Clone)]
 pub struct State {
     pub schema: Schema<QueryRoot, MutationRoot, EmptySubscription>,
 }

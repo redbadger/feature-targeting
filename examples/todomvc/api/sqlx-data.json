@@ -7,30 +7,22 @@
         {
           "ordinal": 0,
           "name": "id",
-          "type_info": "Uuid",
-          "relation_id": 40970,
-          "relation_attribute_no": 1
+          "type_info": "Uuid"
         },
         {
           "ordinal": 1,
           "name": "auth_subject",
-          "type_info": "Varchar",
-          "relation_id": 40970,
-          "relation_attribute_no": 2
+          "type_info": "Varchar"
         },
         {
           "ordinal": 2,
           "name": "title",
-          "type_info": "Text",
-          "relation_id": 40970,
-          "relation_attribute_no": 3
+          "type_info": "Text"
         },
         {
           "ordinal": 3,
           "name": "completed",
-          "type_info": "Bool",
-          "relation_id": 40970,
-          "relation_attribute_no": 4
+          "type_info": "Bool"
         }
       ],
       "parameters": {
@@ -54,30 +46,22 @@
         {
           "ordinal": 0,
           "name": "id",
-          "type_info": "Uuid",
-          "relation_id": 40970,
-          "relation_attribute_no": 1
+          "type_info": "Uuid"
         },
         {
           "ordinal": 1,
           "name": "auth_subject",
-          "type_info": "Varchar",
-          "relation_id": 40970,
-          "relation_attribute_no": 2
+          "type_info": "Varchar"
         },
         {
           "ordinal": 2,
           "name": "title",
-          "type_info": "Text",
-          "relation_id": 40970,
-          "relation_attribute_no": 3
+          "type_info": "Text"
         },
         {
           "ordinal": 3,
           "name": "completed",
-          "type_info": "Bool",
-          "relation_id": 40970,
-          "relation_attribute_no": 4
+          "type_info": "Bool"
         }
       ],
       "parameters": {
@@ -101,30 +85,22 @@
         {
           "ordinal": 0,
           "name": "id",
-          "type_info": "Uuid",
-          "relation_id": 40970,
-          "relation_attribute_no": 1
+          "type_info": "Uuid"
         },
         {
           "ordinal": 1,
           "name": "auth_subject",
-          "type_info": "Varchar",
-          "relation_id": 40970,
-          "relation_attribute_no": 2
+          "type_info": "Varchar"
         },
         {
           "ordinal": 2,
           "name": "title",
-          "type_info": "Text",
-          "relation_id": 40970,
-          "relation_attribute_no": 3
+          "type_info": "Text"
         },
         {
           "ordinal": 3,
           "name": "completed",
-          "type_info": "Bool",
-          "relation_id": 40970,
-          "relation_attribute_no": 4
+          "type_info": "Bool"
         }
       ],
       "parameters": {
@@ -148,30 +124,22 @@
         {
           "ordinal": 0,
           "name": "id",
-          "type_info": "Uuid",
-          "relation_id": 40970,
-          "relation_attribute_no": 1
+          "type_info": "Uuid"
         },
         {
           "ordinal": 1,
           "name": "auth_subject",
-          "type_info": "Varchar",
-          "relation_id": 40970,
-          "relation_attribute_no": 2
+          "type_info": "Varchar"
         },
         {
           "ordinal": 2,
           "name": "title",
-          "type_info": "Text",
-          "relation_id": 40970,
-          "relation_attribute_no": 3
+          "type_info": "Text"
         },
         {
           "ordinal": 3,
           "name": "completed",
-          "type_info": "Bool",
-          "relation_id": 40970,
-          "relation_attribute_no": 4
+          "type_info": "Bool"
         }
       ],
       "parameters": {
@@ -194,30 +162,22 @@
         {
           "ordinal": 0,
           "name": "id",
-          "type_info": "Uuid",
-          "relation_id": 40970,
-          "relation_attribute_no": 1
+          "type_info": "Uuid"
         },
         {
           "ordinal": 1,
           "name": "auth_subject",
-          "type_info": "Varchar",
-          "relation_id": 40970,
-          "relation_attribute_no": 2
+          "type_info": "Varchar"
         },
         {
           "ordinal": 2,
           "name": "title",
-          "type_info": "Text",
-          "relation_id": 40970,
-          "relation_attribute_no": 3
+          "type_info": "Text"
         },
         {
           "ordinal": 3,
           "name": "completed",
-          "type_info": "Bool",
-          "relation_id": 40970,
-          "relation_attribute_no": 4
+          "type_info": "Bool"
         }
       ],
       "parameters": {

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use http_types::headers::HeaderValue;
-use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use tide::{
     security::{CorsMiddleware, Origin},
     Redirect, Response, Server,
@@ -10,9 +10,12 @@ mod db;
 mod graphql;
 
 pub async fn create_app(database_url: &str) -> Result<Server<graphql::State>> {
-    let connection_pool = PgPool::new(database_url).await?;
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(database_url)
+        .await?;
 
-    let mut app = tide::with_state(graphql::State::new(connection_pool));
+    let mut app = tide::with_state(graphql::State::new(pool));
 
     app.middleware(
         CorsMiddleware::new()

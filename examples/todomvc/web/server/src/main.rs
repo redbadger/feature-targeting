@@ -56,6 +56,7 @@ fn token_url_from_str(s: &str) -> Result<TokenUrl> {
     Ok(TokenUrl::new(s.to_string())?)
 }
 
+#[derive(Clone)]
 struct State {
     client: BasicClient,
     config: Config,
