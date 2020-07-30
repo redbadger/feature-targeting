@@ -2,8 +2,8 @@ use anyhow::{anyhow, Result};
 use failure::Fail;
 use openidconnect::{
     core::{CoreClient, CoreProviderMetadata, CoreResponseType},
-    AccessTokenHash, AsyncCodeTokenRequest, AuthUrl, AuthenticationFlow, AuthorizationCode,
-    ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge,
+    AccessTokenHash, AsyncCodeTokenRequest, AuthenticationFlow, AuthorizationCode, ClientId,
+    ClientSecret, CsrfToken, IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge,
     PkceCodeVerifier, RedirectUrl, Scope,
 };
 use serde::Deserialize;
@@ -15,6 +15,7 @@ use tide::{
     },
     Body, Redirect, Request, Response,
 };
+use time::OffsetDateTime;
 use url::Url;
 
 mod async_client;
@@ -27,18 +28,12 @@ const PUBLIC: &str = "../client/public";
 struct Config {
     #[structopt(long, env = "API_URL")]
     api_url: Url,
-    #[structopt(long, parse(try_from_str=redirect_url_from_str), env = "REDIRECT_URL")]
-    redirect_url: RedirectUrl,
+    #[structopt(long, env = "WEB_URL")]
+    web_url: Url,
     #[structopt(long, parse(from_str=client_id_from_str), env = "CLIENT_ID")]
     client_id: ClientId,
     #[structopt(long, parse(from_str=client_secret_from_str), env = "CLIENT_SECRET", hide_env_values = true)]
     client_secret: ClientSecret,
-    #[structopt(long, parse(try_from_str=auth_url_from_str), env = "AUTH_URL")]
-    auth_url: AuthUrl,
-}
-
-fn redirect_url_from_str(s: &str) -> Result<RedirectUrl> {
-    Ok(RedirectUrl::new(s.to_string())?)
 }
 
 fn client_id_from_str(s: &str) -> ClientId {
@@ -47,10 +42,6 @@ fn client_id_from_str(s: &str) -> ClientId {
 
 fn client_secret_from_str(s: &str) -> ClientSecret {
     ClientSecret::new(s.to_string())
-}
-
-fn auth_url_from_str(s: &str) -> Result<AuthUrl> {
-    Ok(AuthUrl::new(s.to_string())?)
 }
 
 #[derive(Clone)]
@@ -72,13 +63,21 @@ async fn home(req: Request<State>) -> tide::Result {
         .finish();
     res.insert_cookie(cookie);
 
-    let cookie = Cookie::build("redirect_url", config.redirect_url.to_string())
+    res.set_content_type(mime::HTML);
+
+    Ok(res)
+}
+
+async fn logout(_req: Request<State>) -> tide::Result {
+    let mut res: Response = Redirect::new("/").into();
+    let cookie = Cookie::build("token", "deleted")
         .path("/")
-        .same_site(SameSite::Strict)
+        .expires(OffsetDateTime::from_unix_timestamp(0))
+        // .same_site(SameSite::Strict)
+        // .http_only(true)
+        // .secure(true)
         .finish();
     res.insert_cookie(cookie);
-
-    res.set_content_type(mime::HTML);
 
     Ok(res)
 }
@@ -213,12 +212,14 @@ async fn main() -> Result<()> {
         CoreProviderMetadata::discover_async(issuer_url, async_client::async_http_client)
             .await
             .map_err(|e| anyhow!("Could not get provider metadata: {:?}", e))?;
+    let mut redirect_url = config.web_url.clone();
+    redirect_url.set_path("/callback");
     let client = CoreClient::from_provider_metadata(
         provider_metadata,
         config.client_id.clone(),
         Some(config.client_secret.clone()),
     )
-    .set_redirect_uri(config.redirect_url.clone());
+    .set_redirect_uri(RedirectUrl::from_url(redirect_url));
 
     let mut app = tide::with_state(State { client, config });
 
@@ -227,6 +228,7 @@ async fn main() -> Result<()> {
     app.at("/completed").get(home);
     app.at("/healthz").get(|_| async { Ok(Response::new(204)) });
     app.at("/login").get(login);
+    app.at("/logout").get(logout);
     app.at("/callback").get(callback);
     app.at("/pkg").serve_dir(PKG)?;
     app.at("/public").serve_dir(PUBLIC)?;

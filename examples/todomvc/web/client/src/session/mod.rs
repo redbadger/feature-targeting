@@ -6,7 +6,6 @@ mod auth;
 
 pub enum Msg {
     LoggedIn(Option<Claims>),
-    Logout,
 }
 
 pub struct Model {
@@ -37,17 +36,12 @@ pub fn update(msg: Msg, model: &mut Model) {
         LoggedIn(None) => {
             model.user = None;
         }
-
-        Logout => {
-            super::cookies::delete_cookie("token");
-            model.user = None;
-        }
     }
 }
 
 pub fn view<M: 'static>(
     user: &Option<String>,
-    to_msg: impl FnOnce(Msg) -> M + Clone + 'static,
+    _to_msg: impl FnOnce(Msg) -> M + Clone + 'static,
 ) -> Node<M> {
     nav![
         C!["auth-text"],
@@ -56,7 +50,9 @@ pub fn view<M: 'static>(
                 span![format!("{} ", user)],
                 a![
                     C!["auth-link"],
-                    mouse_ev(Ev::Click, |_| to_msg(Msg::Logout)),
+                    attrs! {
+                        At::Href => "http://todo.red-badger.com/logout"
+                    },
                     "logout"
                 ]
             ]

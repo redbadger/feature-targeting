@@ -20,8 +20,8 @@ spec:
           env:
             - name: API_URL
               value: http://todo.red-badger.com/graphql
-            - name: REDIRECT_URL
-              value: http://todo.red-badger.com/callback
+            - name: WEB_URL
+              value: http://todo.red-badger.com
             - name: CLIENT_ID
               valueFrom:
                 secretKeyRef:
