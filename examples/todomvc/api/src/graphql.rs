@@ -140,7 +140,7 @@ pub async fn handle_graphql(req: Request<State>) -> tide::Result {
 
     let schema = req.state().schema.clone();
     async_graphql_tide::graphql(req, schema, |query_builder| {
-        query_builder.data(AuthSubject(claims.sub.to_string()))
+        query_builder.data(AuthSubject(claims.sub.clone()))
     })
     .await
 }
