@@ -1,13 +1,10 @@
-use anyhow::{anyhow, Result};
-use auth::{AuthResponse, Claims};
+use anyhow::Result;
+use auth::Claims;
 use seed::{prelude::*, *};
 
 mod auth;
 
-const STORAGE_KEY: &str = "todomvc-session";
-
 pub enum Msg {
-    Login,
     LoggedIn(Option<Claims>),
     Logout,
 }
@@ -28,17 +25,9 @@ impl Model {
     }
 }
 
-pub fn update<M: 'static>(msg: Msg, model: &mut Model, orders: &mut impl Orders<M>) {
+pub fn update(msg: Msg, model: &mut Model) {
     use Msg::*;
     match msg {
-        Login => {
-            if let Ok(url) = auth::get_login_url(&model.redirect_url) {
-                window()
-                    .open_with_url_and_target(url.to_string().as_str(), "_self")
-                    .expect("couldn't open window");
-            }
-            orders.skip();
-        }
         LoggedIn(Some(claims)) => {
             model.user = Some(claims.name);
             Url::new()
@@ -50,10 +39,8 @@ pub fn update<M: 'static>(msg: Msg, model: &mut Model, orders: &mut impl Orders<
         }
 
         Logout => {
-            if let Ok(()) = auth::logout() {
-                LocalStorage::remove(STORAGE_KEY).expect("problem removing key from local storage");
-                model.user = None;
-            }
+            super::cookies::delete_cookie("token");
+            model.user = None;
         }
     }
 }
@@ -89,32 +76,20 @@ pub fn view<M: 'static>(
     ]
 }
 
-pub fn get_claims(url: &Url) -> Result<Option<Claims>> {
-    if let Ok(response) = LocalStorage::get(STORAGE_KEY) {
-        let claims = auth::get_claims(&response)?;
+pub fn get_claims() -> Result<Option<Claims>> {
+    if let Some(response) = super::cookies::get_cookie("token") {
+        let claims = auth::decode_jwt(&response)?;
         return Ok(Some(claims));
-    } else {
-        let url = url.to_string();
-        let url = url
-            .strip_prefix("/#")
-            .ok_or_else(|| anyhow!("url doesn't start with \"/#\""))?;
-        if let Ok(response) = serde_urlencoded::from_str::<AuthResponse>(url) {
-            let claims = auth::get_claims(&response)?;
-            LocalStorage::insert(STORAGE_KEY, &response)
-                .map_err(|e| anyhow!("cannot insert into localstorage {:?}", e))?;
-            return Ok(Some(claims));
-        }
     }
 
     Ok(None)
 }
 
 pub fn after_mount<M: 'static>(
-    url: &Url,
     orders: &mut impl Orders<M>,
     to_msg: impl FnOnce(Msg) -> M + Clone + 'static,
 ) {
-    match get_claims(url) {
+    match get_claims() {
         Ok(claims) => {
             orders.perform_cmd(async move { to_msg(Msg::LoggedIn(claims)) });
         }

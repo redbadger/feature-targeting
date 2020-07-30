@@ -1,3 +1,4 @@
+#![allow(clippy::suspicious_else_formatting, clippy::toplevel_ref_arg)] // try removing this when sqlx is updated
 use anyhow::Result;
 use sqlx::{types::Uuid, PgPool};
 

@@ -178,7 +178,6 @@ async fn callback(req: Request<State>) -> tide::Result {
                             }
                             let mut res: Response = Redirect::new("/").into();
                             let token = id_token.to_string();
-                            // let token = base64::encode(token);
                             let cookie = Cookie::build("token", token)
                                 .path("/")
                                 // .same_site(SameSite::Strict)

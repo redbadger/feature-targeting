@@ -1,4 +1,3 @@
-use browser::util::cookies;
 use graphql_client::{GraphQLQuery, Response};
 use seed::{prelude::*, *};
 use serde::{Deserialize, Serialize};
@@ -6,6 +5,7 @@ use std::mem;
 use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
+mod cookies;
 mod session;
 
 const ENTER_KEY: u32 = 13;
@@ -329,7 +329,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             data.editing_todo = None;
         }
 
-        Session(msg) => session::update(msg, &mut model.session, orders),
+        Session(msg) => session::update(msg, &mut model.session),
     }
 }
 
@@ -528,23 +528,16 @@ fn view_clear_completed(todos: &Store) -> Option<Node<Msg>> {
     })
 }
 
-fn get_cookie(name: &str, default: &str) -> String {
-    match cookies() {
-        Some(jar) => match jar.get(name) {
-            Some(cookie) => cookie.value().to_string(),
-            None => default.to_string(),
-        },
-        None => default.to_string(),
-    }
-}
-
 fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
-    session::after_mount(&url, orders, Msg::Session);
+    session::after_mount(orders, Msg::Session);
 
-    let api_url =
-        url::Url::parse(&get_cookie("api_url", DEFAULT_API_URL)).expect("Cannot parse api_url");
-    let redirect_url = url::Url::parse(&get_cookie("redirect_url", DEFAULT_REDIRECT_URL))
+    let api_url = url::Url::parse(&cookies::get_cookie_or_default("api_url", DEFAULT_API_URL))
         .expect("Cannot parse api_url");
+    let redirect_url = url::Url::parse(&cookies::get_cookie_or_default(
+        "redirect_url",
+        DEFAULT_REDIRECT_URL,
+    ))
+    .expect("Cannot parse api_url");
 
     let model = Model {
         api_url,
