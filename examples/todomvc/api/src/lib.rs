@@ -8,6 +8,7 @@ use tide::{
 
 mod db;
 mod graphql;
+mod jwt;
 
 pub async fn create_app(database_url: &str) -> Result<Server<graphql::State>> {
     let pool = PgPoolOptions::new()

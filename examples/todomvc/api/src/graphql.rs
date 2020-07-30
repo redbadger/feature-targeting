@@ -4,7 +4,10 @@ use async_graphql::{
     Context, EmptySubscription, FieldResult, InputObject, Object, Schema, SimpleObject, ID,
 };
 use sqlx::PgPool as Pool;
-use tide::{http::mime, Body, Request, Response, StatusCode};
+use tide::{
+    http::{headers, mime},
+    Body, Error, Request, Response, StatusCode,
+};
 use uuid::Uuid;
 
 #[SimpleObject(desc = "A todo")]
@@ -119,10 +122,25 @@ impl MutationRoot {
 }
 
 pub async fn handle_graphql(req: Request<State>) -> tide::Result {
-    let auth_subject = "stu";
+    let header = req
+        .header(&headers::AUTHORIZATION)
+        .map(|header| header.last().to_string())
+        .ok_or_else(|| Error::from_str(StatusCode::Unauthorized, "missing Authorization header"))?;
+
+    let token = header
+        .strip_prefix("Bearer ")
+        .ok_or_else(|| Error::from_str(StatusCode::Unauthorized, "missing Bearer token"))?;
+
+    let claims = super::jwt::decode_jwt(token).map_err(|e| {
+        Error::from_str(
+            StatusCode::Unauthorized,
+            format!("cannot decode token {:?}", e),
+        )
+    })?;
+
     let schema = req.state().schema.clone();
     async_graphql_tide::graphql(req, schema, |query_builder| {
-        query_builder.data(AuthSubject(auth_subject.to_string()))
+        query_builder.data(AuthSubject(claims.sub.to_string()))
     })
     .await
 }
