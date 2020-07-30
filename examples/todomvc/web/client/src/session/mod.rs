@@ -10,15 +10,15 @@ pub enum Msg {
 
 pub struct Model {
     pub base_url: Url,
-    pub redirect_url: url::Url,
+    pub jwt: Option<String>,
     pub user: Option<String>,
 }
 
 impl Model {
-    pub fn new(base_url: Url, redirect_url: url::Url, user: Option<String>) -> Self {
+    pub fn new(base_url: Url, jwt: Option<String>, user: Option<String>) -> Self {
         Self {
             base_url,
-            redirect_url,
+            jwt,
             user,
         }
     }

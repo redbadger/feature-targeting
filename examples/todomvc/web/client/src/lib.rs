@@ -10,8 +10,7 @@ mod session;
 
 const ENTER_KEY: u32 = 13;
 const ESC_KEY: u32 = 27;
-const DEFAULT_API_URL: &str = "http://localhost:3030/graphql";
-const DEFAULT_REDIRECT_URL: &str = "http://localhost:8080";
+const DEFAULT_API_URL: &str = "http://localhost:3030";
 const ACTIVE: &str = "active";
 const COMPLETED: &str = "completed";
 
@@ -34,13 +33,18 @@ generate_query!(DeleteTodo);
 generate_query!(CreateTodo);
 generate_query!(UpdateTodo);
 
-async fn send_graphql_request<V, T>(api_url: &url::Url, variables: &V) -> fetch::Result<T>
+async fn send_graphql_request<V, T>(
+    api_url: &url::Url,
+    jwt: &str,
+    variables: &V,
+) -> fetch::Result<T>
 where
     V: Serialize,
     T: for<'de> Deserialize<'de> + 'static,
 {
     Request::new(api_url.to_string())
         .method(Method::Post)
+        .header(Header::authorization(format!("Bearer {}", jwt)))
         .json(variables)?
         .fetch()
         .await?
@@ -182,28 +186,32 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         ClearCompletedTodos => {
             for (id, todo) in &data.todos {
                 if todo.completed {
-                    let vars = delete_todo::Variables { id: id.to_string() };
-                    let api_url = model.api_url.clone();
-                    orders.skip().perform_cmd(async move {
-                        let request = DeleteTodo::build_query(vars);
-                        let response = send_graphql_request(&api_url, &request).await;
-                        TodoRemoved(response)
-                    });
+                    if let Some(jwt) = model.session.jwt.clone() {
+                        let vars = delete_todo::Variables { id: id.to_string() };
+                        let api_url = model.api_url.clone();
+                        orders.skip().perform_cmd(async move {
+                            let request = DeleteTodo::build_query(vars);
+                            let response = send_graphql_request(&api_url, &jwt, &request).await;
+                            TodoRemoved(response)
+                        });
+                    };
                 }
             }
         }
 
         CreateNewTodo => {
             if !data.new_todo_title.is_empty() {
-                let vars = create_todo::Variables {
-                    title: mem::take(&mut data.new_todo_title),
+                if let Some(jwt) = model.session.jwt.clone() {
+                    let vars = create_todo::Variables {
+                        title: mem::take(&mut data.new_todo_title),
+                    };
+                    let api_url = model.api_url.clone();
+                    orders.skip().perform_cmd(async move {
+                        let request = CreateTodo::build_query(vars);
+                        let response = send_graphql_request(&api_url, &jwt, &request).await;
+                        NewTodoCreated(response)
+                    });
                 };
-                let api_url = model.api_url.clone();
-                orders.skip().perform_cmd(async move {
-                    let request = CreateTodo::build_query(vars);
-                    let response = send_graphql_request(&api_url, &request).await;
-                    NewTodoCreated(response)
-                });
             }
         }
         NewTodoCreated(Ok(Response {
@@ -223,17 +231,19 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
         ToggleTodo(todo_id) => {
             if let Some(todo) = data.todos.get(&todo_id) {
-                let vars = update_todo::Variables {
-                    id: todo_id.to_string(),
-                    title: Some(todo.title.clone()),
-                    completed: Some(!todo.completed),
+                if let Some(jwt) = model.session.jwt.clone() {
+                    let vars = update_todo::Variables {
+                        id: todo_id.to_string(),
+                        title: Some(todo.title.clone()),
+                        completed: Some(!todo.completed),
+                    };
+                    let api_url = model.api_url.clone();
+                    orders.skip().perform_cmd(async move {
+                        let request = UpdateTodo::build_query(vars);
+                        let response = send_graphql_request(&api_url, &jwt, &request).await;
+                        TodoToggled(response)
+                    });
                 };
-                let api_url = model.api_url.clone();
-                orders.skip().perform_cmd(async move {
-                    let request = UpdateTodo::build_query(vars);
-                    let response = send_graphql_request(&api_url, &request).await;
-                    TodoToggled(response)
-                });
             }
         }
         TodoToggled(Ok(Response {
@@ -259,13 +269,15 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
 
         RemoveTodo(todo_id) => {
-            let id = todo_id.to_string();
-            let api_url = model.api_url.clone();
-            orders.skip().perform_cmd(async move {
-                let request = DeleteTodo::build_query(delete_todo::Variables { id });
-                let response = send_graphql_request(&api_url, &request).await;
-                TodoRemoved(response)
-            });
+            if let Some(jwt) = model.session.jwt.clone() {
+                let id = todo_id.to_string();
+                let api_url = model.api_url.clone();
+                orders.skip().perform_cmd(async move {
+                    let request = DeleteTodo::build_query(delete_todo::Variables { id });
+                    let response = send_graphql_request(&api_url, &jwt, &request).await;
+                    TodoRemoved(response)
+                });
+            };
         }
         TodoRemoved(Ok(Response {
             data: Some(response_data),
@@ -300,17 +312,19 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         SaveEditingTodo => {
             if let Some(todo) = data.editing_todo.take() {
-                let vars = update_todo::Variables {
-                    id: todo.id.to_string(),
-                    title: Some(todo.title),
-                    completed: None,
+                if let Some(jwt) = model.session.jwt.clone() {
+                    let vars = update_todo::Variables {
+                        id: todo.id.to_string(),
+                        title: Some(todo.title),
+                        completed: None,
+                    };
+                    let api_url = model.api_url.clone();
+                    orders.skip().perform_cmd(async move {
+                        let request = UpdateTodo::build_query(vars);
+                        let response = send_graphql_request(&api_url, &jwt, &request).await;
+                        EditingTodoSaved(response)
+                    });
                 };
-                let api_url = model.api_url.clone();
-                orders.skip().perform_cmd(async move {
-                    let request = UpdateTodo::build_query(vars);
-                    let response = send_graphql_request(&api_url, &request).await;
-                    EditingTodoSaved(response)
-                });
             }
         }
         EditingTodoSaved(Ok(Response {
@@ -531,28 +545,22 @@ fn view_clear_completed(todos: &Store) -> Option<Node<Msg>> {
 fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
     session::after_mount(orders, Msg::Session);
 
-    let api_url = url::Url::parse(&cookies::get_cookie_or_default("api_url", DEFAULT_API_URL))
-        .expect("Cannot parse api_url");
-    let redirect_url = url::Url::parse(&cookies::get_cookie_or_default(
-        "redirect_url",
-        DEFAULT_REDIRECT_URL,
-    ))
-    .expect("Cannot parse api_url");
-
     let model = Model {
-        api_url,
-
+        api_url: url::Url::parse(&cookies::get_cookie_or_default("api_url", DEFAULT_API_URL))
+            .expect("Cannot parse api_url"),
         data: Data::default(),
         refs: Refs::default(),
-        session: session::Model::new(url.to_hash_base_url(), redirect_url, None),
+        session: session::Model::new(url.to_hash_base_url(), cookies::get_cookie("token"), None),
     };
 
     let api_url = model.api_url.clone();
-    orders.perform_cmd(async move {
-        let request = GetTodos::build_query(get_todos::Variables);
-        let response = send_graphql_request(&api_url, &request).await;
-        Msg::TodosFetched(response)
-    });
+    if let Some(jwt) = model.session.jwt.clone() {
+        orders.perform_cmd(async move {
+            let request = GetTodos::build_query(get_todos::Variables);
+            let response = send_graphql_request(&api_url, &jwt, &request).await;
+            Msg::TodosFetched(response)
+        });
+    };
     orders
         .subscribe(Msg::UrlChanged)
         .notify(subs::UrlChanged(url));

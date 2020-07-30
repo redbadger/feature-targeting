@@ -3,7 +3,7 @@ use http_types::headers::HeaderValue;
 use sqlx::postgres::PgPoolOptions;
 use tide::{
     security::{CorsMiddleware, Origin},
-    Redirect, Response, Server,
+    Response, Server,
 };
 
 mod db;
@@ -28,10 +28,9 @@ pub async fn create_app(database_url: &str) -> Result<Server<graphql::State>> {
             .allow_credentials(false),
     );
 
-    app.at("/").get(Redirect::permanent("/graphiql"));
     app.at("/healthz").get(|_| async { Ok(Response::new(204)) });
-    app.at("/graphql").post(graphql::handle_graphql);
-    app.at("/graphiql").get(graphql::handle_graphiql);
+    app.at("/").post(graphql::handle_graphql);
+    app.at("/").get(graphql::handle_graphiql);
 
     Ok(app)
 }

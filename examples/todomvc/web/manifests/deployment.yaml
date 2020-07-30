@@ -19,7 +19,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: API_URL
-              value: http://todo.red-badger.com/graphql
+              value: http://todo.red-badger.com/api
             - name: WEB_URL
               value: http://todo.red-badger.com
             - name: CLIENT_ID
