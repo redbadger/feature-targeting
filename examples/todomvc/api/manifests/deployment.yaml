@@ -18,6 +18,8 @@ spec:
           image: todomvc_api
           imagePullPolicy: IfNotPresent
           env:
+            - name: MOUNTED_AT
+              value: /api
             - name: DATABASE_URL
               value: postgres://stuartharris@host.docker.internal/todos
           ports:

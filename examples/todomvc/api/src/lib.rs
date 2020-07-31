@@ -1,6 +1,7 @@
 use anyhow::Result;
 use http_types::headers::HeaderValue;
 use sqlx::postgres::PgPoolOptions;
+use structopt::StructOpt;
 use tide::{
     security::{CorsMiddleware, Origin},
     Response, Server,
@@ -10,13 +11,21 @@ mod db;
 mod graphql;
 mod jwt;
 
-pub async fn create_app(database_url: &str) -> Result<Server<graphql::State>> {
+#[derive(Debug, Clone, StructOpt)]
+pub struct Config {
+    #[structopt(long, env = "DATABASE_URL")]
+    database_url: String,
+    #[structopt(long, env = "MOUNTED_AT", default_value = "/")]
+    mounted_at: String,
+}
+
+pub async fn create_app(config: &Config) -> Result<Server<graphql::State>> {
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect(database_url)
+        .connect(&config.database_url)
         .await?;
 
-    let mut app = tide::with_state(graphql::State::new(pool));
+    let mut app = tide::with_state(graphql::State::new(pool, &config.mounted_at));
 
     app.middleware(
         CorsMiddleware::new()

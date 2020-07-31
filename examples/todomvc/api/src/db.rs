@@ -11,7 +11,7 @@ pub struct Todo {
 }
 
 impl Todo {
-    pub async fn find_all(auth_subject: &str, pool: &PgPool) -> Result<Vec<Todo>> {
+    pub async fn find_all(pool: &PgPool, auth_subject: &str) -> Result<Vec<Todo>> {
         let todos = sqlx::query_file_as!(Todo, "sql/find_all.sql", auth_subject)
             .fetch_all(pool)
             .await?;
@@ -19,7 +19,7 @@ impl Todo {
         Ok(todos)
     }
 
-    pub async fn find_by_id(id: Uuid, auth_subject: &str, pool: &PgPool) -> Result<Todo> {
+    pub async fn find_by_id(pool: &PgPool, auth_subject: &str, id: Uuid) -> Result<Todo> {
         let todo = sqlx::query_file_as!(Todo, "sql/find_by_id.sql", id, auth_subject)
             .fetch_one(pool)
             .await?;
@@ -27,7 +27,7 @@ impl Todo {
         Ok(todo)
     }
 
-    pub async fn create(auth_subject: &str, title: String, pool: &PgPool) -> Result<Todo> {
+    pub async fn create(pool: &PgPool, auth_subject: &str, title: String) -> Result<Todo> {
         let todo = sqlx::query_file_as!(Todo, "sql/create.sql", auth_subject, title)
             .fetch_one(pool)
             .await?;
@@ -36,11 +36,11 @@ impl Todo {
     }
 
     pub async fn update(
-        id: Uuid,
+        pool: &PgPool,
         auth_subject: &str,
+        id: Uuid,
         title: Option<String>,
         completed: Option<bool>,
-        pool: &PgPool,
     ) -> Result<Todo> {
         let todo = sqlx::query_file_as!(Todo, "sql/update.sql", id, auth_subject, title, completed)
             .fetch_one(pool)
@@ -49,7 +49,7 @@ impl Todo {
         Ok(todo)
     }
 
-    pub async fn delete(id: Uuid, auth_subject: &str, pool: &PgPool) -> Result<Todo> {
+    pub async fn delete(pool: &PgPool, auth_subject: &str, id: Uuid) -> Result<Todo> {
         let todo = sqlx::query_file_as!(Todo, "sql/delete.sql", id, auth_subject)
             .fetch_one(pool)
             .await?;

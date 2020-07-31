@@ -46,14 +46,16 @@ struct AuthSubject(String);
 #[derive(Clone)]
 pub struct State {
     pub schema: Schema<QueryRoot, MutationRoot, EmptySubscription>,
+    pub mounted_at: String,
 }
 
 impl State {
-    pub fn new(pool: Pool) -> State {
+    pub fn new(pool: Pool, mounted_at: &str) -> State {
         State {
             schema: Schema::build(QueryRoot, MutationRoot, EmptySubscription)
                 .data(pool)
                 .finish(),
+            mounted_at: mounted_at.into(),
         }
     }
 }
@@ -66,16 +68,16 @@ impl QueryRoot {
     async fn todos(&self, context: &Context<'_>) -> FieldResult<Vec<Todo>> {
         let pool = context.data()?;
         let auth_subject = context.data::<AuthSubject>()?;
-        let todos = db::Todo::find_all(&auth_subject.0, pool).await?;
+        let todos = db::Todo::find_all(pool, &auth_subject.0).await?;
         Ok(todos.iter().cloned().map(Into::into).collect())
     }
 
     #[field(desc = "Get Todo by id")]
     async fn todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
         let pool = context.data()?;
-        let id = Uuid::parse_str(id.as_str())?;
         let auth_subject = context.data::<AuthSubject>()?;
-        let todo = db::Todo::find_by_id(id, &auth_subject.0, pool).await?;
+        let id = Uuid::parse_str(id.as_str())?;
+        let todo = db::Todo::find_by_id(pool, &auth_subject.0, id).await?;
         Ok(todo.into())
     }
 }
@@ -88,7 +90,7 @@ impl MutationRoot {
     async fn create_todo(&self, context: &Context<'_>, todo: NewTodo) -> FieldResult<Todo> {
         let pool = context.data()?;
         let auth_subject = context.data::<AuthSubject>()?;
-        let todo = db::Todo::create(&auth_subject.0, todo.title, pool).await?;
+        let todo = db::Todo::create(pool, &auth_subject.0, todo.title).await?;
         Ok(todo.into())
     }
 
@@ -102,11 +104,11 @@ impl MutationRoot {
         let pool = context.data()?;
         let auth_subject = context.data::<AuthSubject>()?;
         let todo = db::Todo::update(
-            Uuid::parse_str(id.as_str())?,
+            pool,
             &auth_subject.0,
+            Uuid::parse_str(id.as_str())?,
             todo.title,
             todo.completed,
-            pool,
         )
         .await?;
         Ok(todo.into())
@@ -116,7 +118,7 @@ impl MutationRoot {
     async fn delete_todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
         let pool = context.data()?;
         let auth_subject = context.data::<AuthSubject>()?;
-        let todo = db::Todo::delete(Uuid::parse_str(id.as_str())?, &auth_subject.0, pool).await?;
+        let todo = db::Todo::delete(pool, &auth_subject.0, Uuid::parse_str(id.as_str())?).await?;
         Ok(todo.into())
     }
 }
@@ -145,10 +147,11 @@ pub async fn handle_graphql(req: Request<State>) -> tide::Result {
     .await
 }
 
-pub async fn handle_graphiql(_: Request<State>) -> tide::Result {
+pub async fn handle_graphiql(req: Request<State>) -> tide::Result {
+    let mounted_at = req.state().mounted_at.clone();
     let mut response = Response::new(StatusCode::Ok);
     response.set_body(Body::from_string(playground_source(
-        GraphQLPlaygroundConfig::new("/graphql"),
+        GraphQLPlaygroundConfig::new(&mounted_at),
     )));
     response.set_content_type(mime::HTML);
 
