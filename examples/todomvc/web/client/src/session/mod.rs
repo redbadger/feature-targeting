@@ -5,6 +5,8 @@ use seed::{prelude::*, *};
 mod auth;
 
 pub enum Msg {
+    Login,
+    Logout,
     LoggedIn(Option<Claims>),
 }
 
@@ -27,20 +29,15 @@ impl Model {
 pub fn update(msg: Msg, model: &mut Model) {
     use Msg::*;
     match msg {
-        LoggedIn(Some(claims)) => {
-            model.user = Some(claims.name);
-            Url::new()
-                .set_path(model.base_url.hash_path())
-                .go_and_replace();
-        }
-        LoggedIn(None) => {
-            model.user = None;
-        }
+        Login => 
+        LoggedIn(Some(claims)) => model.user = Some(claims.name),
+        LoggedIn(None) => model.user = None,
     }
 }
 
 pub fn view<M: 'static>(
     user: &Option<String>,
+    url: &Url,
     _to_msg: impl FnOnce(Msg) -> M + Clone + 'static,
 ) -> Node<M> {
     nav![
@@ -51,7 +48,7 @@ pub fn view<M: 'static>(
                 a![
                     C!["auth-link"],
                     attrs! {
-                        At::Href => "http://todo.red-badger.com/logout"
+                        At::Href => format!("{}logout", url.to_base_url())
                     },
                     "logout"
                 ]
@@ -62,7 +59,7 @@ pub fn view<M: 'static>(
                 a![
                     C!["auth-link"],
                     attrs! {
-                        At::Href => "http://todo.red-badger.com/login"
+                        At::Href => format!("{}login", url.to_base_url())
                     },
                     "login"
                 ],

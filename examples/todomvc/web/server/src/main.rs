@@ -13,7 +13,8 @@ use tide::{
         cookies::{Cookie, SameSite},
         mime,
     },
-    Body, Redirect, Request, Response,
+    utils::After,
+    Body, Error, Redirect, Request, Response, StatusCode,
 };
 use time::OffsetDateTime;
 use url::Url;
@@ -51,7 +52,7 @@ struct State {
 }
 
 async fn home(req: Request<State>) -> tide::Result {
-    let mut res = Response::new(tide::StatusCode::Ok);
+    let mut res = Response::new(StatusCode::Ok);
 
     let body = Body::from_file(HOME).await?;
     res.set_body(body);
@@ -131,67 +132,74 @@ async fn login(req: Request<State>) -> tide::Result {
 async fn callback(req: Request<State>) -> tide::Result {
     let query: CallbackQuery = req.query()?;
     let state = req.state();
-    if let Some(csrf_state_cookie) = req.cookie("csrf_state") {
-        if query.state == csrf_state_cookie.value() {
-            if let Some(pkce_code_verifier) = req.cookie("pkce_code_verifier") {
-                let pkce_code_verifier =
-                    PkceCodeVerifier::new(pkce_code_verifier.value().to_string());
-                if let Some(nonce) = req.cookie("nonce") {
-                    let nonce = Nonce::new(nonce.value().to_string());
-                    if let Ok(token_response) = state
-                        .client
-                        .exchange_code(AuthorizationCode::new(query.code))
-                        .set_pkce_verifier(pkce_code_verifier)
-                        .request_async(async_client::async_http_client)
-                        .await
-                    {
-                        let id_token_verifier = state.client.id_token_verifier();
-                        tide::log::info!("token: {:?}", token_response);
-                        if let Some(id_token) = token_response.extra_fields().id_token() {
-                            let claims =
-                                id_token.claims(&id_token_verifier, &nonce).map_err(|e| {
-                                    tide::Error::new(
-                                        tide::http::StatusCode::Unauthorized,
-                                        e.compat(),
-                                    )
-                                })?;
-                            if let Some(expected_access_token_hash) = claims.access_token_hash() {
-                                let actual_access_token_hash = AccessTokenHash::from_token(
-                                    token_response.access_token(),
-                                    &id_token.signing_alg().map_err(|e| {
-                                        tide::Error::new(
-                                            tide::http::StatusCode::Unauthorized,
-                                            e.compat(),
-                                        )
-                                    })?,
-                                )
-                                .map_err(|e| {
-                                    tide::Error::new(
-                                        tide::http::StatusCode::Unauthorized,
-                                        e.compat(),
-                                    )
-                                })?;
-                                if actual_access_token_hash != *expected_access_token_hash {
-                                    return Ok(Response::new(tide::StatusCode::Unauthorized));
-                                }
-                            }
-                            let mut res: Response = Redirect::new("/").into();
-                            let token = id_token.to_string();
-                            let cookie = Cookie::build("token", token)
-                                .path("/")
-                                // .same_site(SameSite::Strict)
-                                // .http_only(true)
-                                // .secure(true)
-                                .finish();
-                            res.insert_cookie(cookie);
-                            return Ok(res);
-                        }
-                    }
-                }
-            }
-        }
+
+    let csrf_state = req
+        .cookie("csrf_state")
+        .ok_or_else(|| Error::from_str(StatusCode::Unauthorized, "no csrf state"))?;
+    if query.state == csrf_state.value() {
+        return Err(Error::from_str(StatusCode::Unauthorized, "bad csrf state"));
     }
-    Ok(Response::new(tide::StatusCode::Unauthorized))
+
+    let pkce_code_verifier = req
+        .cookie("pkce_code_verifier")
+        .ok_or_else(|| Error::from_str(StatusCode::Unauthorized, "no PKCE code verifier"))?;
+    let pkce_code_verifier = PkceCodeVerifier::new(pkce_code_verifier.value().to_string());
+
+    let nonce = req
+        .cookie("nonce")
+        .ok_or_else(|| Error::from_str(StatusCode::Unauthorized, "no nonce"))?;
+    let nonce = Nonce::new(nonce.value().to_string());
+
+    let token_response = state
+        .client
+        .exchange_code(AuthorizationCode::new(query.code))
+        .set_pkce_verifier(pkce_code_verifier)
+        .request_async(async_client::async_http_client)
+        .await
+        .map_err(|e| {
+            Error::from_str(
+                StatusCode::Unauthorized,
+                format!("cannot get token {:?}", e),
+            )
+        })?;
+
+    let id_token_verifier = state.client.id_token_verifier();
+
+    let id_token = token_response
+        .extra_fields()
+        .id_token()
+        .ok_or_else(|| Error::from_str(StatusCode::Unauthorized, "no token"))?;
+
+    let claims = id_token
+        .claims(&id_token_verifier, &nonce)
+        .map_err(|e| Error::new(StatusCode::Unauthorized, e.compat()))?;
+
+    let expected_access_token_hash = claims
+        .access_token_hash()
+        .ok_or_else(|| Error::from_str(StatusCode::Unauthorized, "no token hash"))?;
+
+    let alg = &id_token
+        .signing_alg()
+        .map_err(|e| Error::new(StatusCode::Unauthorized, e.compat()))?;
+
+    let actual_access_token_hash = AccessTokenHash::from_token(token_response.access_token(), alg)
+        .map_err(|e| Error::new(StatusCode::Unauthorized, e.compat()))?;
+
+    if actual_access_token_hash != *expected_access_token_hash {
+        return Ok(Response::new(StatusCode::Unauthorized));
+    }
+
+    let mut res: Response = Redirect::new("/").into();
+    let token = id_token.to_string();
+    let cookie = Cookie::build("token", token)
+        .path("/")
+        // .same_site(SameSite::Strict)
+        // .http_only(true)
+        // .secure(true)
+        .finish();
+    res.insert_cookie(cookie);
+
+    Ok(res)
 }
 
 #[derive(Deserialize)]
@@ -222,6 +230,19 @@ async fn main() -> Result<()> {
     .set_redirect_uri(RedirectUrl::from_url(redirect_url));
 
     let mut app = tide::with_state(State { client, config });
+
+    app.with(After(|res: Response| async move {
+        match res.status() {
+            StatusCode::Unauthorized => {
+                if let Some(err) = res.error() {
+                    let msg = err.to_string();
+                    tide::log::error!("Unauthorized: {:?}", msg);
+                }
+                Ok(Response::new(StatusCode::Unauthorized))
+            }
+            _ => Ok(res),
+        }
+    }));
 
     app.at("/").get(home);
     app.at("/active").get(home);
