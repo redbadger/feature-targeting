@@ -9,11 +9,11 @@ anyhow = "1.0.32"
 async-std = { version = "1.6.2", features = ["attributes"] }
 base64 = "0.12.3"
 failure = "0.1.8"
-http-types = { version = "2.3.0", features = ["hyperium_http"] }
+http-types = { version = "2.4.0", features = ["hyperium_http"] }
 openidconnect = { version = "1.0.1", features = ["futures-03"], default-features = false }
 serde = "1.0.114"
 serde_json = "1.0.57"
-structopt = "0.3.15"
+structopt = "0.3.16"
 surf = { git = "https://github.com/http-rs/surf" }
 thiserror = "1.0.20"
 tide = "0.13.0"
