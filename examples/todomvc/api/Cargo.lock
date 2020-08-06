@@ -138,9 +138,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql"
-version = "1.16.15"
+version = "1.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baae84dbaa60f19a60df41c1d6f7607c2ab3a0fcc2665e7d2cc5e0b3db3147b8"
+checksum = "c3978364e46b54edbbebeba94630ecc44d5666713bd89a3c5ac784972f142a9b"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-derive"
-version = "1.16.10"
+version = "1.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69e6d60b7660a9f4c455afbd71a0e9c992f5f901b52ed2877c1d630be54b1815"
+checksum = "ad700d5c7d5a1deaf4a75f23ff25e3b0952772c5059e9f82685c3dd9e1dd377b"
 dependencies = [
  "Inflector",
  "async-graphql-parser",
@@ -195,9 +195,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-parser"
-version = "1.16.14"
+version = "1.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58e4832ec3cac6e56a498878b6fa04ff7b30af6aa651f30476941d162129a012"
+checksum = "82bad60689666ebc06a856788c8394161fcd88522647cbc8593447c6441461f4"
 dependencies = [
  "arrayvec",
  "pest",
@@ -209,9 +209,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-tide"
-version = "1.16.12"
+version = "1.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7eb8c2d03796c6f6589912aacc2f417b5978a9246bc043660debd539ac1a1d62"
+checksum = "2fad7eba235f80d28a97b218dd395573a6323cd7dda97b881ba5c7e73e1590da"
 dependencies = [
  "async-graphql",
  "async-std",
@@ -223,9 +223,9 @@ dependencies = [
 
 [[package]]
 name = "async-h1"
-version = "2.1.1"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63da30f1df6a14c2e111596727d1e9dbd593a749dd66f0a08da005733e2a880e"
+checksum = "7ca2b5cfe1804f48bb8dfb1b2391e6e9a3fbf89e07514dce3bddb03eb4d529db"
 dependencies = [
  "async-std",
  "byte-pool",
@@ -543,9 +543,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.33.1"
+version = "2.33.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdfa80d47f954d53a35a64987ca1422f495b8d6483c0fe9f7117b36c2a792129"
+checksum = "10040cdf04294b565d9e0319955430099ec3813a64c952b86a41200ad714ae48"
 dependencies = [
  "ansi_term",
  "atty",
@@ -576,9 +576,9 @@ dependencies = [
 
 [[package]]
 name = "concurrent-queue"
-version = "1.2.0"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e296417c8154304ac70aceda41f05318f986f7c0c767bcb0a2366fbb890e78e1"
+checksum = "30ed07550be01594c6026cff2a1d7fe9c8f683caa798e12b68694ac9e88286a3"
 dependencies = [
  "cache-padded",
 ]
@@ -746,9 +746,9 @@ dependencies = [
 
 [[package]]
 name = "error-chain"
-version = "0.12.3"
+version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be51ed50e75656c17216bdd4326914466db0c91b9b246b12962a00284d06566b"
+checksum = "2d2f06b9cac1506ece98fe3231e3cc9c4410ec3d5b1f24ae1c8946f0742cdefc"
 dependencies = [
  "backtrace",
  "version_check",
@@ -756,9 +756,9 @@ dependencies = [
 
 [[package]]
 name = "event-listener"
-version = "2.3.0"
+version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "298f00c3b04c1d9b4cb86aefaaa35348af0957d98b30a5306fc635f8e718923d"
+checksum = "68082183f458867ce7cddea16d4df4443c1537112c0c09c450dedc09daf5c719"
 
 [[package]]
 name = "fake-simd"
@@ -1059,9 +1059,9 @@ dependencies = [
 
 [[package]]
 name = "http-types"
-version = "2.3.0"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bc341c4b7a71eb0d85c760dc7363648b82ecc38fa5ead50f69b52858df708b9"
+checksum = "bb4daf8dc001485f4a32a7a17c54c67fa8a10340188f30ba87ac0fe1a9451e97"
 dependencies = [
  "anyhow",
  "async-std",
@@ -2121,9 +2121,9 @@ checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
 name = "structopt"
-version = "0.3.15"
+version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de2f5e239ee807089b62adce73e48c625e0ed80df02c7ab3f068f5db5281065c"
+checksum = "de5472fb24d7e80ae84a7801b7978f95a19ec32cb1876faea59ab711eb901976"
 dependencies = [
  "clap",
  "lazy_static",
@@ -2132,9 +2132,9 @@ dependencies = [
 
 [[package]]
 name = "structopt-derive"
-version = "0.4.8"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "510413f9de616762a4fbeab62509bf15c729603b72d7cd71280fbca431b1c118"
+checksum = "1e0eb37335aeeebe51be42e2dc07f031163fbabfa6ac67d7ea68b5c2f68d5f99"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -2151,9 +2151,9 @@ checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
 
 [[package]]
 name = "syn"
-version = "1.0.36"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cdb98bcb1f9d81d07b536179c269ea15999b5d14ea958196413869445bb5250"
+checksum = "e69abc24912995b3038597a7a593be5053eb0fb44f3cc5beec0deb421790c1f4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2338,9 +2338,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2734b5a028fa697686f16c6d18c2c6a3c7e41513f9a213abb6754c4acb3c8d7"
+checksum = "d593f98af59ebc017c0648f0117525db358745a8894a8d684e185ba3f45954f9"
 dependencies = [
  "lazy_static",
 ]
@@ -2428,6 +2428,7 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]
