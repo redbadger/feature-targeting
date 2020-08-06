@@ -136,7 +136,7 @@ async fn callback(req: Request<State>) -> tide::Result {
     let csrf_state = req
         .cookie("csrf_state")
         .ok_or_else(|| Error::from_str(StatusCode::Unauthorized, "no csrf state"))?;
-    if query.state == csrf_state.value() {
+    if query.state != csrf_state.value() {
         return Err(Error::from_str(StatusCode::Unauthorized, "bad csrf state"));
     }
 
