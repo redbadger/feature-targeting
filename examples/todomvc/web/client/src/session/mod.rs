@@ -61,7 +61,7 @@ pub fn view<M: 'static>(model: &Model, to_msg: impl FnOnce(Msg) -> M + Clone + '
                     attrs! {
                         At::Href => model.logout_url
                     },
-                    ev(Ev::Click, |_| to_msg(Msg::Logout)),
+                    mouse_ev(Ev::Click, |_| to_msg(Msg::Logout)),
                     "logout"
                 ]
             ]
@@ -73,7 +73,7 @@ pub fn view<M: 'static>(model: &Model, to_msg: impl FnOnce(Msg) -> M + Clone + '
                     attrs! {
                         At::Href => model.login_url
                     },
-                    ev(Ev::Click, |_| to_msg(Msg::Login)),
+                    mouse_ev(Ev::Click, |_| to_msg(Msg::Login)),
                     "login"
                 ],
                 span![" to modify todos"]
