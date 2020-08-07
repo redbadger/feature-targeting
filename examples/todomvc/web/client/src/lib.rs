@@ -350,11 +350,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 fn view(model: &Model) -> impl IntoNodes<Msg> {
     let data = &model.data;
     nodes![
-        view_header(
-            &data.new_todo_title,
-            &model.session.user,
-            &model.session.base_url
-        ),
+        view_header(&data.new_todo_title, &model),
         if data.todos.is_empty() {
             vec![]
         } else {
@@ -371,10 +367,10 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
     ]
 }
 
-fn view_header(new_todo_title: &str, user: &Option<String>, url: &Url) -> Node<Msg> {
+fn view_header(new_todo_title: &str, model: &Model) -> Node<Msg> {
     header![
         C!["header"],
-        session::view(user, url, Msg::Session),
+        session::view(&model.session, Msg::Session),
         h1!["todos"],
         input![
             C!["new-todo"],
@@ -554,7 +550,7 @@ fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
             .expect("Cannot parse api_url"),
         data: Data::default(),
         refs: Refs::default(),
-        session: session::Model::new(url.to_base_url(), cookies::get_cookie("token"), None),
+        session: session::Model::new(&url.to_base_url(), cookies::get_cookie("token"), None),
     };
 
     let api_url = model.api_url.clone();
