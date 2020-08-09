@@ -40,37 +40,47 @@ _Note that a local instance of PostgreSQL is needed in order to compile._
 
   ```sh
   cargo run
+
+  # or...
+  make
   ```
 
 - Access the Graphiql UI at [http://localhost:3030/graphiql](http://localhost:3030/graphiql)
 
 ## CI Build
 
-Currently we are tied to master branch of [sqlx](https://github.com/launchbadge/sqlx) in order to be able to use the cargo subcommand `cargo sqlx`. Clone the `sqlx` repo and install the subcommand:
+Currently we are tied to master branch of [sqlx](https://github.com/launchbadge/sqlx) in order to be able to use the cargo subcommand `cargo sqlx`.
 
-```sh
-git clone https://github.com/launchbadge/sqlx
-cd sqlx
-cargo install --path sqlx-cli
-```
+- Clone the `sqlx` repo and install the subcommand:
 
-Ensure the SQL statements are validated before building:
+  ```sh
+  git clone https://github.com/launchbadge/sqlx
+  cd sqlx
+  cargo install --path sqlx-cli
+  ```
 
-```sh
-cargo sqlx prepare
-```
+- Ensure the SQL statements are validated before building:
 
-Build the Docker image:
+  ```sh
+  cargo sqlx prepare -- --lib
 
-```sh
-make
-```
+  # or...
+  make prepare
+  ```
 
-Run the Docker image (Docker Desktop for Mac):
+  (note that if there are changes to `sqlx-data.json`, then you will need to commit and push them to the repository).
 
-```sh
-docker run --env DATABASE_URL=postgres://stuartharris@host.docker.internal/todos -it -p3030:3030 todomvc_api
-```
+- Build the Docker image:
+
+  ```sh
+  make docker
+  ```
+
+- Run the Docker image (Docker Desktop for Mac):
+
+  ```sh
+  docker run --env DATABASE_URL=postgres://stuartharris@host.docker.internal/todos -it -p3030:3030 todomvc_api
+  ```
 
 ## Running in Kubernetes
 

@@ -5,12 +5,15 @@ authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0.31"
-async-graphql = "1.16.8"
-async-graphql-tide = "1.16.6"
+anyhow = "1.0.32"
+async-graphql = "1.17.4"
+async-graphql-tide = "1.17.4"
 async-std = { version = "1.6.2", features = ["attributes"] }
-dotenv = "0.15.0"
-http-types = "2.2.1"
-sqlx = { git = "https://github.com/launchbadge/sqlx", features = [ "offline", "postgres", "macros", "uuid" ] }
-tide = "0.11.0"
+base64 = "0.12.3"
+http-types = "2.4.0"
+serde = { version = "1.0.114", features = ["derive"] }
+serde_json = "1.0.57"
+sqlx = { version = "0.4.0-beta.1", features = [ "offline", "postgres", "macros", "uuid" ] }
+structopt = "0.3.16"
+tide = "0.13.0"
 uuid = "0.8.1"

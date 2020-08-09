@@ -1,3 +1,4 @@
-pkg
 .vscode
+client-secret.json
+pkg
 target

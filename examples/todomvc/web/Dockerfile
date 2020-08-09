@@ -1,4 +1,4 @@
-FROM rust:1.44.1 AS build
+FROM rust:1.45 AS build
 
 RUN rustup component add rustfmt clippy
 
@@ -17,6 +17,8 @@ RUN cargo clippy --release -- -D warnings && \
 FROM debian:buster-slim as release
 
 RUN apt-get update && apt-get install -y \
+    curl \
+    openssl \
     tini \
     && rm -rf /var/lib/apt/lists/*
 

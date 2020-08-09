@@ -10,9 +10,9 @@ spec:
   http:
     - match:
         - uri:
-            prefix: "/graphql"
-        - uri:
-            prefix: "/graphiql"
+            prefix: "/api"
+      rewrite:
+        uri: "/"
       route:
         - destination:
             port:

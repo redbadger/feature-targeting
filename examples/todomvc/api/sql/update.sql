@@ -1,7 +1,9 @@
 UPDATE todos
-SET title = COALESCE($1, title),
-    completed = COALESCE($2, completed)
-WHERE id = $3
+SET auth_subject = $2,
+    title = COALESCE($3, title),
+    completed = COALESCE($4, completed)
+WHERE id = $1
 RETURNING id,
+    auth_subject,
     title,
     completed

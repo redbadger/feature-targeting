@@ -3,6 +3,8 @@ default: install ## Install todomvc-web
 
 .PHONY: install
 install: ## Install todomvc-web
+	jq -r ".web|to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" ../client-secret.json | \
+		kubectl create secret generic oauth-creds --dry-run=client -o yaml --from-env-file /dev/stdin >secret.yaml
 	kustomize build . | kubectl apply -f -
 
 .PHONY: delete

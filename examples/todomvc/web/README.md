@@ -8,7 +8,8 @@ Built with:
 - [`graphql-client`][graphql-client]
 - [`wasm-pack`][wasm-pack]
 
-Currently, this is configured against a private Google GSuite OIDC Identity Provider. We will make this more configurable, but for now you may need to point it at your own IDP in order for the authentication bit to work.
+Currently, this is configured against a private Google GSuite OIDC Identity Provider.
+In the GCP console, create a "Client ID for Web application", and download the `json` configuration into the file `client-secret.json`.
 
 We will also be updating this soon to demonstrate feature targeting capabilities.
 
@@ -28,22 +29,22 @@ We will also be updating this soon to demonstrate feature targeting capabilities
   cargo install wasm-pack
   ```
 
-- if you don't have a static webserver:
+- install `jq`:
 
   ```sh
-  brew install httpserver
+  brew install jq
   ```
 
 - build and serve:
 
   ```sh
-  wasm-pack build --target web && httpserver
+  make
   ```
 
 ## To build a Docker image
 
 ```sh
-make
+make docker
 ```
 
 ## Running in Kubernetes
