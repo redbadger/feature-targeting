@@ -27,7 +27,7 @@ pub async fn create_app(config: &Config) -> Result<Server<graphql::State>> {
 
     let mut app = tide::with_state(graphql::State::new(pool, &config.mounted_at));
 
-    app.middleware(
+    app.with(
         CorsMiddleware::new()
             .allow_methods(
                 "GET, POST, OPTIONS"

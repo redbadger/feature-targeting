@@ -21,7 +21,7 @@ pub async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, Req
 
     let body = request.body.clone();
 
-    let mut req = surf::Request::new(method, request.url).set_body(&body[..]);
+    let mut req = surf::Request::builder(method, request.url).body(&body[..]);
 
     for (name, value) in request.headers {
         let value = value.as_bytes().to_owned();
@@ -29,13 +29,16 @@ pub async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, Req
         if let Some(name) = name {
             let name = name.as_str().as_bytes().to_owned();
             let name = unsafe { HeaderName::from_bytes_unchecked(name) };
-            req.insert_header(name, value);
+            req = req.header(name, value);
         }
     }
 
-    tide::log::info!("request {:?}", req);
-    let mut res = req.await.map_err(RequestError::SurfError)?;
-    tide::log::info!("response {:?}", res);
+    let req = req.build();
+
+    let mut res = surf::client()
+        .send(req)
+        .await
+        .map_err(RequestError::SurfError)?;
 
     let status_code = openidconnect::http::StatusCode::from_u16(res.status().into())
         .map_err(|e| RequestError::Other(anyhow!("cannot convert status code: {:?}", e)))?;
@@ -57,7 +60,7 @@ pub async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, Req
         .body_bytes()
         .await
         .map_err(|e| anyhow!("cannot read body bytes: {:?}", e))?;
-    tide::log::info!("body: {:?}", std::str::from_utf8(&body));
+
     Ok(HttpResponse {
         status_code,
         headers,
