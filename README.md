@@ -115,8 +115,7 @@ consult a targeting service before each user request.
 
 ![Architecture](./architecture.svg)
 
-The service uses the request and a set of rules as inputs (and possibly
-consults more external services) to decide which features should be enabled
+The service uses the request and a set of rules as inputs to decide which features should be enabled
 for this particular request. This is then returned to the proxy and injected
 into the request before it is forwarded to the first service in the tree.
 
