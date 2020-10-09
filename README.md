@@ -50,9 +50,9 @@ the default state of a feature should be "disabled", only the features included
 in the request are enabled.
 
 An interesting benefit of having feature state on the HTTP request is the ability
-to drive network infrastructure decisions (e.g. traffic routing) by the feature 
-flags as well, enabling "shadow deployment" of a new version of a service, 
-for example, routing traffic to it only if a particular feature is enabled. 
+to drive network infrastructure decisions (e.g. traffic routing) by the feature
+flags as well, enabling "shadow deployment" of a new version of a service,
+for example, routing traffic to it only if a particular feature is enabled.
 
 ### Implicit and Explicit targeting
 
@@ -62,9 +62,9 @@ targeting them **implicitly** based on rules, or the user requesting the feature
 
 The latter is useful in a development team, when people need to enable a
 particular feature for themselves for development and testing purposes, or when
-sharing work in progress with an individual or a small group of people. There 
-are a few ways of achieving this, e.g. a hostname pattern such as 
-`feature-my-feature.example.com` (enables `my-feature`), a special HTTP header 
+sharing work in progress with an individual or a small group of people. There
+are a few ways of achieving this, e.g. a hostname pattern such as
+`feature-my-feature.example.com` (enables `my-feature`), a special HTTP header
 with a list of features to enable, etc.
 
 The former is useful when introducing the feature gradually to a larger group
@@ -79,10 +79,10 @@ Each change set made by an engineer should begin by introducing a new feature
 flag. In its simplest form this is a conditional statement checking the presence
 of a particular feature name on the incoming request.
 
-The engineer can then make changes, deploy them to a shared environment (even the live one) 
-and use explicit targeting to enable the feature for themselves, but nobody else. 
-This can be repeated as many times as necessary. An interesting side-effect is that 
-the incremental code changes made are immediately available to the wider team 
+The engineer can then make changes, deploy them to a shared environment (even the live one)
+and use explicit targeting to enable the feature for themselves, but nobody else.
+This can be repeated as many times as necessary. An interesting side-effect is that
+the incremental code changes made are immediately available to the wider team
 (known as "mainline", or "trunk-based" development) reducing queuing of dependent changes.
 
 Once the feature has been mostly completed, a QA person can use explicit targeting
@@ -98,7 +98,7 @@ it can be removed, which concludes the life cycle.
 
 Notice that this could be done without excessive codebase branching and a large
 number of replicas of the live environment, but with the same level of safety.
-This is the goal of this capability. 
+This is the goal of this capability.
 
 When this method is followed for all changes, deployments can be made automatically
 for every change made, because by default, they have no user-facing effect. This
@@ -113,11 +113,11 @@ into them based on explicit and implicit targeting rules in a technology
 agnostic way, the simplest way is to introduce an ingress proxy, which can
 consult a targeting service before each user request.
 
-> TODO diagram
+![Architecture](./architecture.svg)
 
 The service uses the request and a set of rules as inputs (and possibly
 consults more external services) to decide which features should be enabled
-for this particular request. This is then returned to the proxy and injected 
+for this particular request. This is then returned to the proxy and injected
 into the request before it is forwarded to the first service in the tree.
 
 The services in the request path need to forward the enabled feature set to
