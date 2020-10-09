@@ -111,12 +111,12 @@ Feature targeting is a big enabler for continuous deployment to production.
 In order to process incoming user requests and inject the enabled features
 into them based on explicit and implicit targeting rules in a technology
 agnostic way, the simplest way is to introduce an ingress proxy, which can
-consult a targeting service before each user request.
+modify each user request based on a ruleset.
 
 ![Architecture](./architecture.svg)
 
-The service uses the request and a set of rules as inputs to decide which features should be enabled
-for this particular request. This is then returned to the proxy and injected
+The proxy uses the request and a set of rules as inputs to decide which features 
+should be enabled for this particular request. This is then injected
 into the request before it is forwarded to the first service in the tree.
 
 The services in the request path need to forward the enabled feature set to
