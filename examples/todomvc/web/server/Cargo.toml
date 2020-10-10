@@ -1,21 +1,21 @@
 [package]
-name = "todomvc_web_server"
-version = "0.1.0"
 authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
 edition = "2018"
+name = "todomvc_web_server"
+version = "0.1.0"
 
 [dependencies]
-anyhow = "1.0.32"
-async-std = { version = "1.6.2", features = ["attributes"] }
-base64 = "0.12.3"
+anyhow = "1.0.33"
+async-std = {version = "1.6.5", features = ["attributes"]}
+base64 = "0.13.0"
 failure = "0.1.8"
-http-types = { version = "2.4.0", features = ["hyperium_http"] }
-openidconnect = { version = "1.0.1", features = ["futures-03"], default-features = false }
-serde = "1.0.114"
-serde_json = "1.0.57"
-structopt = "0.3.16"
-surf = { git = "https://github.com/http-rs/surf" }
-thiserror = "1.0.20"
+http-types = {version = "2.5.0", features = ["hyperium_http"]}
+openidconnect = {version = "1.0.1", features = ["futures-03"], default-features = false}
+serde = "1.0.116"
+serde_json = "1.0.58"
+structopt = "0.3.19"
+surf = "2.0.0"
+thiserror = "1.0.21"
 tide = "0.13.0"
-time = "0.2.16"
+time = "0.2.22"
 url = "2.1.1"
