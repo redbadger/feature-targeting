@@ -1,16 +1,16 @@
 [package]
-name = "adapter-proxy-wasm"
-version = "0.1.0"
 authors = ["Viktor Charypar <charypar@gmail.com>"]
 edition = "2018"
+name = "adapter-proxy-wasm"
+version = "0.1.0"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-chrono = "0.4.13"
-data-plane = { path = "../data-plane" }
+chrono = "0.4.19"
+data-plane = {path = "../data-plane"}
 log = "0.4.11"
-proxy-wasm = "0.1.0"
-serde = { version = "1.0.114", features = ["derive"] }
-serde_json = "1.0.56"
+proxy-wasm = "0.1.2"
+serde = {version = "1.0.116", features = ["derive"]}
+serde_json = "1.0.58"
