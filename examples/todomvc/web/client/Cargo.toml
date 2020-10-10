@@ -1,25 +1,25 @@
 [package]
-name = "todomvc_web_client"
-version = "0.1.0"
 authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
 edition = "2018"
+name = "todomvc_web_client"
+version = "0.1.0"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow = "1.0.32"
-base64 = "0.12.3"
+anyhow = "1.0.33"
+base64 = "0.13.0"
 graphql_client = "0.9.0"
-indexmap = { version = "1.5.1", features = ["serde-1"] }
+indexmap = {version = "1.6.0", features = ["serde-1"]}
 seed = "0.7.0"
-serde = { version = "1.0.114", features = ["derive"] }
-serde_json = "1.0.57"
-serde_urlencoded = "0.6.1"
+serde = {version = "1.0.116", features = ["derive"]}
+serde_json = "1.0.58"
+serde_urlencoded = "0.7.0"
 url = "2.1.1"
-uuid = { version = "0.8.1", features = ["serde", "v4", "wasm-bindgen"] }
-wasm-bindgen = "0.2.67"
+uuid = {version = "0.8.1", features = ["serde", "v4", "wasm-bindgen"]}
+wasm-bindgen = "0.2.68"
 
 [profile.release]
-opt-level = 'z'
 lto = true
+opt-level = 'z'
