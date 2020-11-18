@@ -20,51 +20,29 @@ Built with:
 
 _Note that a local instance of PostgreSQL is needed in order to compile._
 
-- Because we use the `sqlx::query_as_file!()` macro (which validates queries at compile time against a schema in a PostgreSQL database), you should run something like the following to create a `todos` database on a local PostgreSQL instance:
-
-  ```sh
-  (
-      set -euxo pipefail
-
-      createdb -U ${USERNAME} todos || true
-
-      DATABASE_URL=postgres://${USERNAME}@localhost/todos
-      psql -d "${DATABASE_URL}" -f ./schema.sql
-      psql -d "${DATABASE_URL}" -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
-
-      echo "DATABASE_URL=${DATABASE_URL}" > .env
-  )
-  ```
+- Because we use the `sqlx::query_as_file!()` macro (which validates queries at compile time against a schema in a PostgreSQL database), you should run `make prepare` to run PostgresQL in Docker and migrate the schema.
 
 - To build and run:
 
   ```sh
-  cargo run
-
-  # or...
   make
   ```
 
-- Access the Graphiql UI at [http://localhost:3030/graphiql](http://localhost:3030/graphiql)
+- Access the Graphiql UI at [http://localhost:3030](http://localhost:3030). You will need a JWT token with an `email` claim in the `Authorization` header, e.g. add something like this to the "HTTP headers" section in the bottom left of GraphQL Playground:
+
+  ```json
+  {
+    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.Y4icSuhBb2U3U_tifd3YevJBpRtmh6OSHOLqX0RqINk"
+  }
+  ```
 
 ## CI Build
 
 Currently we are tied to master branch of [sqlx](https://github.com/launchbadge/sqlx) in order to be able to use the cargo subcommand `cargo sqlx`.
 
-- Clone the `sqlx` repo and install the subcommand:
-
-  ```sh
-  git clone https://github.com/launchbadge/sqlx
-  cd sqlx
-  cargo install --path sqlx-cli
-  ```
-
 - Ensure the SQL statements are validated before building:
 
   ```sh
-  cargo sqlx prepare -- --lib
-
-  # or...
   make prepare
   ```
 
@@ -79,7 +57,7 @@ Currently we are tied to master branch of [sqlx](https://github.com/launchbadge/
 - Run the Docker image (Docker Desktop for Mac):
 
   ```sh
-  docker run --env DATABASE_URL=postgres://stuartharris@host.docker.internal/todos -it -p3030:3030 todomvc_api
+  docker run --env DATABASE_URL=postgres://postgres@host.docker.internal/todos -it -p3030:3030 todomvc_api
   ```
 
 ## Running in Kubernetes
