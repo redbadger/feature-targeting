@@ -5,17 +5,17 @@ name = "todomvc_web_server"
 version = "0.1.0"
 
 [dependencies]
-anyhow = "1.0.33"
-async-std = {version = "1.6.5", features = ["attributes"]}
+anyhow = "1.0.34"
+async-std = {version = "1.7.0", features = ["attributes"]}
 base64 = "0.13.0"
 failure = "0.1.8"
-http-types = {version = "2.5.0", features = ["hyperium_http"]}
-openidconnect = {version = "1.0.1", features = ["futures-03"], default-features = false}
-serde = "1.0.116"
-serde_json = "1.0.58"
-structopt = "0.3.19"
-surf = "2.0.0"
-thiserror = "1.0.21"
-tide = "0.13.0"
-time = "0.2.22"
-url = "2.1.1"
+http-types = {version = "2.8.0", features = ["hyperium_http"]}
+openidconnect = {git = "https://github.com/ramosbugs/openidconnect-rs", branch = "main"}
+serde = "1.0.117"
+serde_json = "1.0.59"
+structopt = "0.3.20"
+surf = "2.1.0"
+thiserror = "1.0.22"
+tide = "0.15.0"
+time = "0.2.23"
+url = "2.2.0"

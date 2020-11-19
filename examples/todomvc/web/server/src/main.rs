@@ -2,9 +2,8 @@ use anyhow::{anyhow, Result};
 use failure::Fail;
 use openidconnect::{
     core::{CoreClient, CoreProviderMetadata, CoreResponseType},
-    AccessTokenHash, AsyncCodeTokenRequest, AuthenticationFlow, AuthorizationCode, ClientId,
-    ClientSecret, CsrfToken, IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge,
-    PkceCodeVerifier, RedirectUrl, Scope,
+    AccessTokenHash, AuthenticationFlow, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
+    IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope,
 };
 use serde::Deserialize;
 use structopt::StructOpt;
