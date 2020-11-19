@@ -542,8 +542,8 @@ fn view_clear_completed(todos: &Store) -> Option<Node<Msg>> {
     })
 }
 
-fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
-    session::after_mount(orders, Msg::Session);
+fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    session::init(orders, Msg::Session);
 
     let model = Model {
         api_url: url::Url::parse(&cookies::get_cookie_or_default("api_url", DEFAULT_API_URL))
@@ -565,12 +565,10 @@ fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
         .subscribe(Msg::UrlChanged)
         .notify(subs::UrlChanged(url));
 
-    AfterMount::new(model)
+    model
 }
 
 #[wasm_bindgen(start)]
 pub fn create_app() {
-    App::builder(update, view)
-        .after_mount(after_mount)
-        .build_and_start();
+    App::start("app", init, update, view);
 }

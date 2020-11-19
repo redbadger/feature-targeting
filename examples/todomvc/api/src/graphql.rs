@@ -10,13 +10,14 @@ use tide::{
 };
 use uuid::Uuid;
 
-#[SimpleObject(desc = "A todo")]
+/// A todo
+#[derive(SimpleObject)]
 pub struct Todo {
-    #[field(desc = "The id of the todo")]
+    /// The id of the todo
     id: ID,
-    #[field(desc = "The title of the todo")]
+    /// The title of the todo
     title: String,
-    #[field(desc = "Is the todo completed?")]
+    /// Is the todo completed?
     completed: bool,
 }
 
@@ -30,12 +31,12 @@ impl From<db::Todo> for Todo {
     }
 }
 
-#[InputObject]
+#[derive(InputObject)]
 struct NewTodo {
     title: String,
 }
 
-#[InputObject]
+#[derive(InputObject)]
 struct UpdateTodo {
     title: Option<String>,
     completed: Option<bool>,
@@ -64,7 +65,7 @@ pub struct QueryRoot;
 
 #[Object]
 impl QueryRoot {
-    #[field(desc = "Get all Todos")]
+    /// Get all Todos
     async fn todos(&self, context: &Context<'_>) -> FieldResult<Vec<Todo>> {
         let pool = context.data()?;
         let auth_subject = context.data::<AuthSubject>()?;
@@ -72,7 +73,7 @@ impl QueryRoot {
         Ok(todos.iter().cloned().map(Into::into).collect())
     }
 
-    #[field(desc = "Get Todo by id")]
+    /// Get Todo by id
     async fn todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
         let pool = context.data()?;
         let auth_subject = context.data::<AuthSubject>()?;
@@ -86,7 +87,7 @@ pub struct MutationRoot;
 
 #[Object]
 impl MutationRoot {
-    #[field(desc = "Create a new todo (returns the created todo)")]
+    /// Create a new todo (returns the created todo)
     async fn create_todo(&self, context: &Context<'_>, todo: NewTodo) -> FieldResult<Todo> {
         let pool = context.data()?;
         let auth_subject = context.data::<AuthSubject>()?;
@@ -94,7 +95,7 @@ impl MutationRoot {
         Ok(todo.into())
     }
 
-    #[field(desc = "Update a todo (returns the updated todo)")]
+    /// Update a todo (returns the updated todo)
     async fn update_todo(
         &self,
         context: &Context<'_>,
@@ -114,7 +115,7 @@ impl MutationRoot {
         Ok(todo.into())
     }
 
-    #[field(desc = "Delete a todo (returns the deleted todo)")]
+    /// Delete a todo (returns the deleted todo)
     async fn delete_todo(&self, context: &Context<'_>, id: ID) -> FieldResult<Todo> {
         let pool = context.data()?;
         let auth_subject = context.data::<AuthSubject>()?;
@@ -139,12 +140,13 @@ pub async fn handle_graphql(req: Request<State>) -> tide::Result {
             format!("cannot decode token {:?}", e),
         )
     })?;
+    let auth = AuthSubject(claims.sub.clone());
 
     let schema = req.state().schema.clone();
-    async_graphql_tide::graphql(req, schema, |query_builder| {
-        query_builder.data(AuthSubject(claims.sub.clone()))
-    })
-    .await
+
+    let req = async_graphql_tide::receive_request(req).await?.data(auth);
+
+    async_graphql_tide::respond(schema.execute(req).await)
 }
 
 pub async fn handle_graphiql(req: Request<State>) -> tide::Result {

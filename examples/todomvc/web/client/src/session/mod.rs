@@ -7,10 +7,10 @@ mod auth;
 struct_urls!();
 impl<'a> Urls<'a> {
     pub fn login(self) -> Url {
-        self.base_url().add_path_part("/login")
+        self.base_url().add_path_part("login")
     }
     pub fn logout(self) -> Url {
-        self.base_url().add_path_part("/logout")
+        self.base_url().add_path_part("logout")
     }
 }
 
@@ -91,7 +91,7 @@ pub fn get_claims() -> Result<Option<Claims>> {
     Ok(None)
 }
 
-pub fn after_mount<M: 'static>(
+pub fn init<M: 'static>(
     orders: &mut impl Orders<M>,
     to_msg: impl FnOnce(Msg) -> M + Clone + 'static,
 ) {
